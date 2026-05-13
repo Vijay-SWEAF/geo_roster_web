@@ -418,19 +418,14 @@ class CommunityModerationService {
       }
     }
 
-    // ── Step 7: Party / leader names (+1 each, capped at 3 total) ─────────
-    // A single mention is harmless; multiple mentions suggest political focus.
-    int politicalMentions = 0;
+    // ── Step 7: Party / leader names (+4 each, no cap) ──────────────────
+    // For a village community app, ANY political party/leader mention in a
+    // post title or body is treated as political content and blocked.
+    // Score +4 per name so a single mention reaches mediumRisk (≥4) → blocked.
     for (final name in {..._partyNames, ..._leaderNames}) {
       if (_wb(name).hasMatch(norm)) {
-        politicalMentions++;
-        triggered.add(name);
+        addScore(4, name, 'Post contains political party or leader references, which are not allowed in community posts.');
       }
-    }
-    final cappedPolitical = politicalMentions.clamp(0, 3);
-    score += cappedPolitical;
-    if (cappedPolitical > 0) {
-      primaryReason ??= 'Content contains political mentions.';
     }
 
     // ── Step 8: Evasion detection (compact normalized matching) ───────────

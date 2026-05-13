@@ -78,9 +78,11 @@ class LocalBlocklistService {
     'loda', 'lauda', 'lavda', 'lawda', 'lawde', 'lavdya', 'lavde',
     'jhaat', 'jhant', 'jhaantu', 'jhat', 'bocha', 'bochi',
     // Explicit sexual content (standalone) — inappropriate as community post titles
-    'sex', 'porn', 'nude', 'naked', 'xxx', 'boobs', 'boob', 'dick', 'cock',
-    'pussy', 'vagina', 'penis', 'anal', 'orgasm', 'masturbate', 'masturbation',
-    'horny', 'erotic', 'erection', 'ejaculate',
+    'sex', 'sexy', 'sexting', 'sexii', 'sexi', 'porn', 'pornographic',
+    'nude', 'naked', 'xxx', 'boobs', 'boob', 'dick', 'cock', 'pussy',
+    'vagina', 'penis', 'anal', 'orgasm', 'masturbate', 'masturbation',
+    'horny', 'erotic', 'erection', 'ejaculate', 'seductive', 'slutty',
+    'slut', 'whore',
     // Sex acts
     'chod', 'chodu', 'chodto', 'jhavad', 'jhavla', 'jhavli', 'jhavto',
     'jhavte', 'jhavne', 'zavad', 'zavadlela',
