@@ -1,0 +1,89 @@
+{
+  "@@locale": "en",
+
+  "appName": "Our Native",
+  "next": "Next",
+  "skip": "Skip",
+  "getStarted": "Get Started",
+
+  "onboarding1Title": "Our village.\nOur memories.\nOur people.",
+  "onboarding1Subtitle": "Preserve old photos, stories, and values that connect generations.",
+
+  "onboarding2Title": "Stronger together,\nalways.",
+  "onboarding2Subtitle": "Share with care, help each other, and keep our bonds growing.",
+
+  "onboarding3Title": "One day,\nthese stories\nwill be history.",
+  "onboarding3Subtitle": "Preserve our stories, traditions, and memories so future generations always know where they belong.",
+
+  "onboarding4Title": "Kind words,\nopen hearts,\none family.",
+  "onboarding4Subtitle": "Respect first, speak gently, and build a community where everyone belongs.",
+
+  "loginTitle": "Our Native",
+  "loginSubtitle": "Welcome back to your village",
+
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "loginButton": "Sign In",
+  "signupPrompt": "New here?",
+  "signupLink": "Sign up",
+
+  "homeTitle": "Our Native",
+  "memories": "Memories",
+  "help": "Help",
+  "events": "Events",
+  "ourVillage": "Our Village",
+  "settings": "Settings",
+  "language": "Language",
+
+  "preserveRoots": "Preserve roots. Rebuild bonds.",
+  "loginWelcome": "Welcome",
+  "loginPasscodeHint": "Secure access with email passcode",
+  "loginOtpHint": "Enter your email to receive a one-time code. New users are registered automatically.",
+  "passcodeLogin": "Passcode Login",
+  "createAccount": "Create Account",
+
+  "emailRequired": "Email is required",
+  "invalidEmail": "Enter a valid email",
+  "passwordRequired": "Password is required",
+  "passwordTooShort": "Password must be at least 8 characters",
+
+  "passcodeLabel": "Email Passcode",
+  "passcodeHint": "Enter 8-digit code",
+  "passcodeRequired": "Passcode is required",
+  "passcodeInvalid": "Enter a valid 8-digit passcode",
+
+  "otpLabel": "One-Time Code",
+  "otpHint": "Enter 8-digit code",
+  "otpRequired": "Code is required",
+  "otpInvalid": "Enter the 8-digit code from your email",
+  "otpSentMessage": "Code sent! Check your inbox (and spam folder).",
+  "loginOtpNote": "New user? Your account is created automatically when you verify the code.",
+
+  "sendPasscode": "Send Passcode",
+  "resendPasscode": "Resend Passcode",
+  "resendIn": "Resend in {seconds}s",
+  "@resendIn": {
+    "description": "Resend countdown label",
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+  "verifyAndSignIn": "Verify and Sign In",
+  "didntGetCode": "Didn't get a code? Check spam or request resend in 30s.",
+  "accountsNote": "Accounts are community-scoped. Login requires email passcode after confirmation.",
+
+  "tabHome": "Home",
+  "profile": "Profile",
+  "myProfile": "My Profile",
+  "edit": "Edit",
+  "account": "Account",
+  "myMemories": "My Memories",
+  "myHelpPosts": "My Help Posts",
+  "savedEvents": "Saved Events",
+  "notifications": "Notifications",
+  "privacy": "Privacy",
+  "signOut": "Sign Out",
+  "signOutTitle": "Sign Out?",
+  "signOutConfirm": "Are you sure you want to sign out?",
+  "cancel": "Cancel",
+  "posts": "Posts",
+  "helped": "Helped"
+}

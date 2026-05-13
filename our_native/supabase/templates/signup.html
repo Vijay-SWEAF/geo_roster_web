@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OurNative – खाते तयार झाले</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f0e8; }
+    .wrapper { max-width: 520px; margin: 32px auto; background: #ffffff;
+               border-radius: 16px; overflow: hidden;
+               box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+    .header { background: #2d6a4f; padding: 32px 24px; text-align: center; }
+    .header h1 { color: #ffffff; font-size: 22px; letter-spacing: 1px; }
+    .header p  { color: rgba(255,255,255,0.75); font-size: 13px;
+                 font-style: italic; margin-top: 4px; }
+    .body { padding: 36px 32px; }
+    .mr-title { font-size: 20px; font-weight: 700; color: #1b4332;
+                margin-bottom: 6px; }
+    .mr-sub   { font-size: 14px; color: #555; margin-bottom: 28px;
+                line-height: 1.6; }
+    .confirm-btn { display: block; width: 100%; background: #2d6a4f;
+                   color: #ffffff; text-align: center; padding: 16px;
+                   border-radius: 10px; text-decoration: none;
+                   font-size: 16px; font-weight: 700;
+                   letter-spacing: 0.5px; }
+    .or-code  { text-align: center; margin: 20px 0 8px;
+                font-size: 12px; color: #999; }
+    .otp-box  { background: #f0faf4; border: 2px solid #2d6a4f;
+                border-radius: 12px; text-align: center; padding: 16px 0; }
+    .otp-code { font-size: 32px; font-weight: 800; color: #2d6a4f;
+                letter-spacing: 8px; }
+    .divider { border: none; border-top: 1px solid #e8e0d0;
+               margin: 28px 0; }
+    .en-title { font-size: 16px; font-style: italic; color: #666;
+                margin-bottom: 4px; }
+    .en-sub   { font-size: 13px; color: #999; margin-bottom: 20px;
+                line-height: 1.5; }
+    .steps { padding-left: 18px; }
+    .steps li { font-size: 13px; color: #666; margin-bottom: 6px;
+                line-height: 1.5; }
+    .warning  { background: #fff8e6; border-left: 4px solid #e0a020;
+                border-radius: 6px; padding: 12px 16px; margin-top: 24px;
+                font-size: 12px; color: #7a5a00; }
+    .footer   { background: #f5f0e8; padding: 20px 24px; text-align: center;
+                font-size: 11px; color: #aaa; }
+    .footer a { color: #2d6a4f; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🌿 OurNative</h1>
+    <p>Preserve roots. Rebuild bonds.</p>
+  </div>
+
+  <div class="body">
+    <!-- Marathi block -->
+    <p class="mr-title">स्वागत आहे! 🎉</p>
+    <p class="mr-sub">
+      तुमचे OurNative खाते यशस्वीरित्या तयार झाले आहे.<br>
+      खात्याची पडताळणी करण्यासाठी खालील बटणावर क्लिक करा.
+    </p>
+
+    <a class="confirm-btn" href="{{ .ConfirmationURL }}">
+      ईमेल पडताळणी करा / Confirm Email
+    </a>
+
+    <p class="or-code">किंवा हा कोड अ‍ॅपमध्ये टाका / Or enter this code in the app:</p>
+    <div class="otp-box">
+      <p class="otp-code">{{ .Token }}</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- English block -->
+    <p class="en-title">Welcome to OurNative!</p>
+    <p class="en-sub">Your account has been created. Here's what happens next:</p>
+    <ol class="steps">
+      <li>Confirm your email (click the button above or enter the code)</li>
+      <li>Complete your profile — select your district, taluka, village and wadi</li>
+      <li>A community admin will review and approve your membership</li>
+      <li>Once approved, you can post memories, stories and more!</li>
+    </ol>
+
+    <div class="warning">
+      ⚠️ हा कोड कोणाशीही शेअर करू नका. / Never share this code with anyone.
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>© 2026 OurNative · Konkan Maharashtra</p>
+    <p style="margin-top:4px">
+      तुम्ही नोंदणी केली नसल्यास, हे ईमेल दुर्लक्ष करा. ·
+      <a href="{{ .SiteURL }}/unsubscribe">Unsubscribe</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>

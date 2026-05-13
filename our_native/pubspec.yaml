@@ -1,0 +1,145 @@
+name: our_native
+description: "OurNative - Preserve roots. Rebuild bonds."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Supabase
+  supabase_flutter: ^2.8.4
+
+  # State management
+  flutter_riverpod: ^3.3.1
+  riverpod_annotation: ^4.0.2
+
+  # Navigation
+  go_router: ^17.2.3
+
+  # UI
+  google_fonts: ^8.1.0
+  cached_network_image: ^3.4.1
+  flutter_svg: ^2.0.10+1
+  shimmer: ^3.0.0
+  lottie: ^3.3.0
+
+  # Media
+  image_picker: ^1.1.2
+  video_player: ^2.9.5
+  just_audio: ^0.10.5
+  file_picker: ^11.0.2
+
+  # Utils
+  intl: ^0.20.0
+  timeago: ^3.7.0
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+  uuid: ^4.5.1
+  equatable: ^2.0.7
+  flutter_secure_storage: ^10.1.0
+  shared_preferences: ^2.3.5
+
+  # Forms
+  flutter_form_builder: ^10.3.0
+  form_builder_validators: ^11.0.0
+
+  # OpenAI
+  dart_openai: ^6.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.15.0
+  riverpod_generator: ^4.0.3
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "playstore/app_icon_launcher.png"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "playstore/app_icon_launcher.png"
+  min_sdk_android: 21
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+    # flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - playstore/app_icon_green.png
+    - playstore/app_icon_black.png
+    - playstore/1st_screen_transparent.png
+    - playstore/2nd_screen_transparent.png
+    - playstore/main_screen.png
+    - playstore/3rd_screen_transparent.png
+    - playstore/4th_screen_transparent.png
+    - playstore/screen3_transparent.png
+
+  fonts:
+    - family: Mukta
+      fonts:
+        - asset: assets/fonts/Mukta-Regular.ttf
+        - asset: assets/fonts/Mukta-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Mukta-Bold.ttf
+          weight: 700
+
+    - family: TiroMarathi
+      fonts:
+        - asset: assets/fonts/TiroDevanagariMarathi-Regular.ttf
+        - asset: assets/fonts/TiroDevanagariMarathi-Italic.ttf
+          style: italic
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package

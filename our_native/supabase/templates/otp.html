@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OurNative – प्रवेश कोड</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f0e8; }
+    .wrapper { max-width: 520px; margin: 32px auto; background: #ffffff;
+               border-radius: 16px; overflow: hidden;
+               box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+    .header { background: #2d6a4f; padding: 32px 24px; text-align: center; }
+    .header img { width: 64px; height: 64px; border-radius: 14px; margin-bottom: 12px; }
+    .header h1 { color: #ffffff; font-size: 22px; letter-spacing: 1px; }
+    .header p  { color: rgba(255,255,255,0.75); font-size: 13px;
+                 font-style: italic; margin-top: 4px; }
+    .body { padding: 36px 32px; }
+    .mr-title { font-size: 20px; font-weight: 700; color: #1b4332;
+                margin-bottom: 6px; }
+    .mr-sub   { font-size: 14px; color: #555; margin-bottom: 28px; }
+    .otp-box  { background: #f0faf4; border: 2px solid #2d6a4f;
+                border-radius: 12px; text-align: center; padding: 24px 0; }
+    .otp-label { font-size: 12px; color: #888; letter-spacing: 1px;
+                 text-transform: uppercase; margin-bottom: 8px; }
+    .otp-code  { font-size: 40px; font-weight: 800; color: #2d6a4f;
+                 letter-spacing: 10px; }
+    .otp-expiry { font-size: 12px; color: #999; margin-top: 10px; }
+    .divider { border: none; border-top: 1px solid #e8e0d0;
+               margin: 28px 0; }
+    .en-title { font-size: 16px; font-style: italic; color: #666;
+                margin-bottom: 4px; }
+    .en-sub   { font-size: 13px; color: #999; margin-bottom: 20px; }
+    .warning  { background: #fff8e6; border-left: 4px solid #e0a020;
+                border-radius: 6px; padding: 12px 16px;
+                font-size: 12px; color: #7a5a00; }
+    .footer   { background: #f5f0e8; padding: 20px 24px; text-align: center;
+                font-size: 11px; color: #aaa; }
+    .footer a { color: #2d6a4f; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🌿 OurNative</h1>
+    <p>Preserve roots. Rebuild bonds.</p>
+  </div>
+
+  <div class="body">
+    <!-- Marathi block -->
+    <p class="mr-title">नमस्कार!</p>
+    <p class="mr-sub">
+      OurNative मध्ये प्रवेश करण्यासाठी खाली दिलेला
+      <strong>6-अंकी कोड</strong> वापरा.
+      हा कोड <strong>10 मिनिटांसाठी</strong> वैध आहे.
+    </p>
+
+    <div class="otp-box">
+      <p class="otp-label">प्रवेश कोड / OTP</p>
+      <p class="otp-code">{{ .Token }}</p>
+      <p class="otp-expiry">10 मिनिटांत कालबाह्य</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- English block -->
+    <p class="en-title">Your OurNative sign-in code</p>
+    <p class="en-sub">
+      Enter this 6-digit code in the app to verify your identity.
+      It expires in <strong>10 minutes</strong>.
+    </p>
+
+    <div class="warning">
+      ⚠️ हा कोड कोणाशीही शेअर करू नका. / Never share this code with anyone.
+      OurNative will never ask for your OTP.
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>© 2026 OurNative · Konkan Maharashtra</p>
+    <p style="margin-top:4px">
+      तुम्ही हे ईमेल अपेक्षित नसल्यास, दुर्लक्ष करा. ·
+      <a href="{{ .SiteURL }}/unsubscribe">Unsubscribe</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>
