@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/moderation_service.dart';
+import '../../auth/providers/user_profile_provider.dart';
 import '../../posts/models/post.dart';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +28,6 @@ final commentsProvider = FutureProvider.family.autoDispose<List<CommentWithAutho
           'author:user_profiles!comments_author_id_fkey(full_name)',
         )
         .eq('post_id', postId)
-        .eq('status', 'approved')
         .order('created_at', ascending: true)
         .limit(50);
 
@@ -58,6 +58,15 @@ class PostCommentNotifier extends Notifier<AsyncValue<void>> {
     if (body.trim().isEmpty) return false;
     state = const AsyncLoading();
     try {
+      final profile = await ref.read(userProfileProvider.future);
+      if (profile == null) {
+        state = AsyncError(
+          'Set up your profile before commenting.',
+          StackTrace.current,
+        );
+        return false;
+      }
+
       // AI moderation check before inserting comment
       final modResult = await ModerationService.instance.check(body);
       if (modResult.flagged) {
@@ -69,9 +78,14 @@ class PostCommentNotifier extends Notifier<AsyncValue<void>> {
         return false;
       }
 
+      final autoApprove =
+          profile.role.name == 'admin' || profile.role.name == 'moderator';
+
       await supabase.from('comments').insert({
         'post_id': postId,
+        'author_id': profile.id,
         'body': body.trim(),
+        'status': autoApprove ? 'approved' : 'pending_review',
       });
       state = const AsyncData(null);
       onSuccess();

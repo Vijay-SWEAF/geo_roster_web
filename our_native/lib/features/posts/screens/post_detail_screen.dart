@@ -42,6 +42,7 @@ class PostDetailScreen extends ConsumerStatefulWidget {
 
 class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   late Map<String, int> _reactionCounts;
+  late int _commentCount;
   final _commentCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _submitting = false;
@@ -50,6 +51,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   void initState() {
     super.initState();
     _reactionCounts = Map.from(widget.initialReactionCounts);
+    _commentCount = widget.initialCommentCount;
   }
 
   @override
@@ -82,6 +84,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           body: body,
           onSuccess: () {
             _commentCtrl.clear();
+            setState(() => _commentCount++);
             ref.invalidate(commentsProvider(widget.postId));
           },
         );
@@ -227,7 +230,18 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                child: Text('Comments', style: AppTextStyles.h3),
+                child: Row(
+                  children: [
+                    Text('Comments', style: AppTextStyles.h3),
+                    const SizedBox(width: 8),
+                    Text(
+                      '($_commentCount)',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -434,6 +448,25 @@ class _CommentTile extends StatelessWidget {
                         AppUtils.timeAgo(item.comment.createdAt),
                         style: AppTextStyles.caption,
                       ),
+                      if (item.comment.status != 'approved') ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundBeige,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            item.comment.status == 'pending_review'
+                                ? 'Pending'
+                                : item.comment.status,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
