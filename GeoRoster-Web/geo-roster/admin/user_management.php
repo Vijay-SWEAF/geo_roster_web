@@ -120,7 +120,7 @@ require_once "../includes/header.php";
                     <th style="width:50px;">Active</th>
                     <th style="width:100px;">KYC Officer</th>
                     <th style="width:170px;">Created At</th>
-                    <th style="width:120px;">Action</th>
+                    <th style="width:160px;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -141,8 +141,8 @@ require_once "../includes/header.php";
             <?php echo csrfField(); ?>
             <input type="hidden" name="user_id" value="<?php echo (int)$u["user_id"]; ?>">
             <input type="hidden" name="enabled" value="<?php echo (int)$u["kyc_officer_active"] === 1 ? 0 : 1; ?>">
-            <button type="submit" class="action-icon <?php echo (int)$u["kyc_officer_active"] === 1 ? 'danger' : 'success'; ?>" title="<?php echo (int)$u["kyc_officer_active"] === 1 ? 'Revoke KYC Officer' : 'Grant KYC Officer'; ?>">
-                <?php echo (int)$u["kyc_officer_active"] === 1 ? 'Revoke KYC' : 'Grant KYC'; ?>
+            <button type="submit" class="action-icon <?php echo (int)$u["kyc_officer_active"] === 1 ? 'danger' : 'success'; ?>" title="<?php echo (int)$u["kyc_officer_active"] === 1 ? 'Revoke KYC Officer' : 'Grant KYC Officer'; ?>" aria-label="<?php echo (int)$u["kyc_officer_active"] === 1 ? 'Revoke KYC Officer' : 'Grant KYC Officer'; ?>">
+                <?php echo (int)$u["kyc_officer_active"] === 1 ? '🔐' : '🛡️'; ?>
             </button>
         </form>
     <?php } ?>
