@@ -25,9 +25,10 @@ if (!$liveUser || (int)$liveUser['is_active'] !== 1) {
 
 $userRole = $liveUser['role_name'];
 $userBranchId = isset($liveUser['branch_id']) ? (int)$liveUser['branch_id'] : 0;
+$isKycOfficer = hasKycOfficerPermission($conn, (int)$liveUser['user_id']);
 
-if (!in_array($userRole, ['Admin', 'HO User'], true)) {
-    $_SESSION['flash_error'] = "Access denied. Review queue is restricted to Admin and HO Users.";
+if ($userRole !== 'Admin' && !$isKycOfficer) {
+    $_SESSION['flash_error'] = "Access denied. KYC Officer permission is required.";
     header("Location: ../dashboard.php");
     exit;
 }

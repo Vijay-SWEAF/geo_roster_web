@@ -1,8 +1,12 @@
 <?php
 require_once "includes/auth_check.php";
+require_once "config/database.php";
+require_once "includes/kyc_service.php";
 
 $role = $_SESSION["role"];
 $full_name = $_SESSION["full_name"];
+$liveDashboardUser = getAuthoritativeUser($conn, (int)($_SESSION['user_id'] ?? 0));
+$canOpenKycQueue = $liveDashboardUser && ((int)$liveDashboardUser['is_active'] === 1) && ($role === 'Admin' || hasKycOfficerPermission($conn, (int)$liveDashboardUser['user_id']));
 
 define('APP_INCLUDED', true);
 
@@ -67,10 +71,10 @@ require_once "includes/header.php";
     Management Dashboard
 </a>
 
-<a class="card" href="kyc/review_queue.php">
+<?php if ($canOpenKycQueue) { ?><a class="card" href="kyc/review_queue.php">
     <div class="card-icon">🛡️</div>
     KYC Review Queue
-</a>
+</a><?php } ?>
 
 <a class="card" href="admin/user_management.php">
     <div class="card-icon">👤</div>
@@ -126,10 +130,10 @@ require_once "includes/header.php";
     Management Dashboard
 </a>
 
-<a class="card" href="kyc/review_queue.php">
+<?php if ($canOpenKycQueue) { ?><a class="card" href="kyc/review_queue.php">
     <div class="card-icon">🛡️</div>
     KYC Review Queue
-</a>
+</a><?php } ?>
 
 <?php } ?>
 

@@ -8,6 +8,7 @@ define('KYC_STATUS_SUBMITTED', 'SUBMITTED');
 define('KYC_STATUS_UNDER_REVIEW', 'UNDER_REVIEW');
 define('KYC_STATUS_VERIFIED', 'VERIFIED');
 define('KYC_STATUS_REJECTED', 'REJECTED');
+define('KYC_PERMISSION_OFFICER', 'KYC_OFFICER');
 
 /**
  * Re-queries the users table live to obtain current active status, role, and branch.
@@ -23,6 +24,22 @@ function getAuthoritativeUser($conn, $userId) {
     $stmt->execute();
     $result = $stmt->get_result();
     return $result ? $result->fetch_assoc() : null;
+}
+
+function hasKycOfficerPermission($conn, $userId) {
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return false;
+    }
+    $stmt = $conn->prepare('SELECT 1 FROM user_kyc_permissions WHERE user_id = ? AND permission_code = ? AND is_active = 1 LIMIT 1');
+    $permission = KYC_PERMISSION_OFFICER;
+    $stmt->bind_param('is', $userId, $permission);
+    $stmt->execute();
+    return $stmt->get_result()->num_rows === 1;
+}
+
+function canAccessSensitiveKyc($conn, $liveUser) {
+    return $liveUser['role_name'] === 'Admin' || hasKycOfficerPermission($conn, (int)$liveUser['user_id']);
 }
 
 /**
@@ -78,7 +95,9 @@ function requireAuthoritativeKycAccess($conn, $employeeId) {
 
     return [
         'user' => $liveUser,
-        'employee' => $employee
+        'employee' => $employee,
+        'is_kyc_officer' => hasKycOfficerPermission($conn, (int)$liveUser['user_id']),
+        'can_sensitive' => canAccessSensitiveKyc($conn, $liveUser)
     ];
 }
 
@@ -239,7 +258,11 @@ function transitionKycStatus($conn, $employeeId, $newStatus, $actorUserId, $rema
         $kycId = (int)$profile['kyc_id'];
         $currentStatus = $profile['kyc_status'];
 
-        if (!canUserTransitionKyc($liveRole, $currentStatus, $newStatus)) {
+        $canTransition = canUserTransitionKyc($liveRole, $currentStatus, $newStatus);
+        if ($currentStatus === KYC_STATUS_SUBMITTED && $newStatus === KYC_STATUS_UNDER_REVIEW) {
+            $canTransition = $canTransition || hasKycOfficerPermission($conn, $actorId);
+        }
+        if (!$canTransition) {
             $conn->rollback();
             auditEvent($conn, 'kyc_unauthorized_transition_attempt', 'employee_kyc', $kycId, ['from' => $currentStatus, 'to' => $newStatus]);
             http_response_code(403);
@@ -397,9 +420,9 @@ function updateKycStatutoryData($conn, $employeeId, $panApp, $aadhaarApp, $uanAp
     $liveRole = $liveUser['role_name'];
     $actorId = (int)$liveUser['user_id'];
 
-    if (!in_array($liveRole, ['Admin', 'HO User'], true)) {
+    if (!canAccessSensitiveKyc($conn, $liveUser)) {
         http_response_code(403);
-        exit('Branch Users are not authorized to modify statutory values or applicability flags.');
+        exit('KYC sensitive permission required.');
     }
 
     $profile = getKycProfile($conn, $employeeId);
@@ -592,9 +615,9 @@ function revealKycField($conn, $employeeId, $fieldName) {
     $liveUser = $authContext['user'];
     $liveRole = $liveUser['role_name'];
 
-    if ($liveRole === 'Branch User') {
+    if (!canAccessSensitiveKyc($conn, $liveUser)) {
         http_response_code(403);
-        exit('Branch Users are not authorized to reveal unmasked sensitive values.');
+        exit('KYC sensitive permission required.');
     }
 
     $allowedFields = ['pan', 'aadhaar', 'uan', 'esic'];
@@ -1032,9 +1055,9 @@ function updateKycAmendmentStatutoryData($conn, $employeeId, $amendmentId, $panA
     $amendmentId = (int)$amendmentId;
     $employeeId = (int)$employeeId;
 
-    if (!in_array($liveRole, ['Admin', 'HO User'], true)) {
+    if (!canAccessSensitiveKyc($conn, $liveUser)) {
         http_response_code(403);
-        exit('Branch Users are not authorized to modify statutory values in amendments.');
+        exit('KYC sensitive permission required.');
     }
 
     $amendment = getAmendmentById($conn, $amendmentId);
@@ -1212,7 +1235,7 @@ function startReviewKycAmendment($conn, $employeeId, $amendmentId) {
     $amendmentId = (int)$amendmentId;
     $employeeId = (int)$employeeId;
 
-    if (!in_array($liveRole, ['Admin', 'HO User'], true)) {
+    if (!in_array($liveRole, ['Admin', 'HO User'], true) && !hasKycOfficerPermission($conn, $actorId)) {
         http_response_code(403);
         exit('Only Admin and HO Users can start amendment review.');
     }

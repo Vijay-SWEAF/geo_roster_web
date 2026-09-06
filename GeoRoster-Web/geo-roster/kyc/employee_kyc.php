@@ -18,6 +18,8 @@ $auth = requireAuthoritativeKycAccess($conn, $employeeId);
 $user = $auth["user"];
 $employee = $auth["employee"];
 $userRole = $user["role_name"];
+$isKycOfficer = !empty($auth["is_kyc_officer"]);
+$canSensitive = !empty($auth["can_sensitive"]);
 
 // Handle Workflow State Transitions & Data Entry (POST + CSRF)
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -201,11 +203,11 @@ function statusBadgeClass($status) {
 }
 
 $isVerified = ($kycStatus === KYC_STATUS_VERIFIED);
-$canEditStatutory = ($userRole === 'Admin' || $userRole === 'HO User') && !$isVerified;
+$canEditStatutory = ($userRole === 'Admin' || $isKycOfficer) && !$isVerified;
 $canEditBasic = !$isVerified;
 
 $canEditAmendmentBasic = $activeAmendment && in_array($amendmentStatus, ['DRAFT', 'REQUESTED'], true);
-$canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DRAFT', 'REQUESTED'], true) && ($userRole === 'Admin' || $userRole === 'HO User');
+$canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DRAFT', 'REQUESTED'], true) && ($userRole === 'Admin' || $isKycOfficer);
 ?>
 
 <div class="module-two-col">
@@ -279,7 +281,7 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
                 </form>
             <?php } ?>
 
-            <?php if ($kycStatus === KYC_STATUS_SUBMITTED && canUserTransitionKyc($userRole, KYC_STATUS_SUBMITTED, KYC_STATUS_UNDER_REVIEW)) { ?>
+            <?php if ($kycStatus === KYC_STATUS_SUBMITTED && (canUserTransitionKyc($userRole, KYC_STATUS_SUBMITTED, KYC_STATUS_UNDER_REVIEW) || $isKycOfficer)) { ?>
                 <form method="post" action="employee_kyc.php" style="margin-bottom:10px;">
                     <?php echo csrfField(); ?>
                     <input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>">
@@ -358,7 +360,7 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
                             </form>
                         <?php } ?>
 
-                        <?php if ($amendmentStatus === 'SUBMITTED' && ($userRole === 'Admin' || $userRole === 'HO User')) { ?>
+                        <?php if ($amendmentStatus === 'SUBMITTED' && ($userRole === 'Admin' || $userRole === 'HO User' || $isKycOfficer)) { ?>
                             <form method="post" action="employee_kyc.php" style="margin-bottom:8px;">
                                 <?php echo csrfField(); ?>
                                 <input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>">
@@ -532,7 +534,7 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
             <div class="panel-card" style="margin-bottom:16px;">
                 <div class="panel-title">2. Proposed Amendment Statutory Identifiers & Applicability</div>
 
-                <?php if ($userRole === 'Branch User') { ?>
+                <?php if (!$canSensitive) { ?>
                     <p style="color:#64748b; font-size:13px; margin-bottom:12px;">
                         Statutory applicability and identifiers are managed by Head Office / Admin.
                     </p>
@@ -683,7 +685,7 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
             <div class="panel-card" style="margin-bottom:16px;">
                 <div class="panel-title">2. Statutory Identifiers & Applicability</div>
 
-                <?php if ($userRole === 'Branch User') { ?>
+                <?php if (!$canSensitive) { ?>
                     <p style="color:#64748b; font-size:13px; margin-bottom:12px;">
                         Statutory applicability and identifiers are managed by Head Office / Admin.
                     </p>
@@ -789,9 +791,9 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
                         <?php } ?>
                     </form>
 
-                    <!-- Sensitive Value Reveal Section for Admin & HO Users -->
+                    <!-- Sensitive Value Reveal Section for Admin and KYC Officers -->
                     <div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:16px;">
-                        <div style="font-weight:600; margin-bottom:8px; font-size:14px;">Audit-Logged Sensitive Field Reveal (Admin / HO)</div>
+                        <div style="font-weight:600; margin-bottom:8px; font-size:14px;">Audit-Logged Sensitive Field Reveal (Admin / KYC Officer)</div>
                         <p style="font-size:12px; color:#64748b; margin-bottom:12px;">
                             Revealing full statutory values is recorded in the security audit log. Values are decrypted on request only and never stored in URLs or browser state.
                         </p>

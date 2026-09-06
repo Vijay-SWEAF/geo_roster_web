@@ -1,6 +1,8 @@
 <?php
 require_once "../includes/auth_check.php";
 require_once "../config/database.php";
+require_once "../includes/security.php";
+require_once "../includes/kyc_service.php";
 
 $user_role = $_SESSION["role"] ?? "";
 
@@ -25,9 +27,12 @@ $users = $conn->query("
         u.branch_id,
         b.branch_name,
         u.is_active,
-        u.created_at
+        u.created_at,
+        COALESCE(p.is_active, 0) AS kyc_officer_active
     FROM users u
     LEFT JOIN branches b ON u.branch_id = b.branch_id
+    LEFT JOIN user_kyc_permissions p
+        ON p.user_id = u.user_id AND p.permission_code = 'KYC_OFFICER'
     ORDER BY u.user_id DESC
 ");
 
@@ -113,6 +118,7 @@ require_once "../includes/header.php";
                     <th style="width:140px;">Role</th>
                     <th style="width:120px;">Branch</th>
                     <th style="width:50px;">Active</th>
+                    <th style="width:100px;">KYC Officer</th>
                     <th style="width:170px;">Created At</th>
                     <th style="width:120px;">Action</th>
                 </tr>
@@ -126,8 +132,20 @@ require_once "../includes/header.php";
                         <td><?php echo htmlspecialchars($u["role_name"]); ?></td>
                         <td><?php echo htmlspecialchars($u["branch_name"] ?? ""); ?></td>
                         <td><?php echo ((int)$u["is_active"] === 1 ? "Yes" : "No"); ?></td>
+                        <td><?php echo ((int)$u["kyc_officer_active"] === 1 ? "Yes" : "No"); ?></td>
                         <td><?php echo htmlspecialchars($u["created_at"]); ?></td>
                         <td style="white-space:nowrap;">
+
+    <?php if (in_array($u["role_name"], ["HO User", "Branch User"], true) && (int)$u["is_active"] === 1) { ?>
+        <form method="post" action="toggle_kyc_officer.php" style="display:inline;">
+            <?php echo csrfField(); ?>
+            <input type="hidden" name="user_id" value="<?php echo (int)$u["user_id"]; ?>">
+            <input type="hidden" name="enabled" value="<?php echo (int)$u["kyc_officer_active"] === 1 ? 0 : 1; ?>">
+            <button type="submit" class="action-icon <?php echo (int)$u["kyc_officer_active"] === 1 ? 'danger' : 'success'; ?>" title="<?php echo (int)$u["kyc_officer_active"] === 1 ? 'Revoke KYC Officer' : 'Grant KYC Officer'; ?>">
+                <?php echo (int)$u["kyc_officer_active"] === 1 ? 'Revoke KYC' : 'Grant KYC'; ?>
+            </button>
+        </form>
+    <?php } ?>
 
     <a href="edit_user.php?id=<?php echo (int)$u["user_id"]; ?>"
        class="action-icon primary"
