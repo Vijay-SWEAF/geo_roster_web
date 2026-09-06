@@ -1,6 +1,7 @@
 <?php
 require_once "../includes/auth_check.php";
 require_once "../config/database.php";
+require_once "../includes/security.php";
 
 if ($_SESSION["role"] != "Admin" && $_SESSION["role"] != "HO User") {
     $_SESSION["flash_error"] = "Access denied.";
@@ -16,12 +17,10 @@ if ($employee_id <= 0) {
     exit;
 }
 
-$employee_result = $conn->query("
-    SELECT employee_id, employee_no, employee_name, branch_id, location_id, designation, employee_category, is_active
-    FROM employees
-    WHERE employee_id = $employee_id
-    LIMIT 1
-");
+$employee_stmt = $conn->prepare("SELECT employee_id, employee_no, employee_name, branch_id, location_id, designation, employee_category, is_active FROM employees WHERE employee_id = ? LIMIT 1");
+$employee_stmt->bind_param("i", $employee_id);
+$employee_stmt->execute();
+$employee_result = $employee_stmt->get_result();
 
 if (!$employee_result || $employee_result->num_rows == 0) {
     $_SESSION["flash_error"] = "Employee not found.";
@@ -32,10 +31,11 @@ if (!$employee_result || $employee_result->num_rows == 0) {
 $employee = $employee_result->fetch_assoc();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    requireCsrf();
     $employee_no = trim($_POST["employee_no"] ?? "");
     $employee_name = trim($_POST["employee_name"] ?? "");
     $branch_id = (int)($_POST["branch_id"] ?? 0);
-    $location_id = !empty($_POST["location_id"]) ? (int)$_POST["location_id"] : "NULL";
+    $location_id = !empty($_POST["location_id"]) ? (int)$_POST["location_id"] : null;
     $designation = trim($_POST["designation"] ?? "");
     $employee_category = trim($_POST["employee_category"] ?? "");
     $is_active = isset($_POST["is_active"]) ? (int)$_POST["is_active"] : 1;
@@ -46,26 +46,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-    $employee_no_safe = $conn->real_escape_string($employee_no);
-    $employee_name_safe = $conn->real_escape_string($employee_name);
-    $designation_safe = $conn->real_escape_string($designation);
-    $employee_category_safe = $conn->real_escape_string($employee_category);
-
-    $sql = "
-        UPDATE employees
-        SET
-            employee_no = '$employee_no_safe',
-            employee_name = '$employee_name_safe',
-            branch_id = $branch_id,
-            location_id = $location_id,
-            designation = '$designation_safe',
-            employee_category = '$employee_category_safe',
-            is_active = $is_active
-        WHERE employee_id = $employee_id
-    ";
-
-    if ($conn->query($sql)) {
+    if (!in_array($employee_category, ["Staff", "Labour"], true) || !in_array($is_active, [0, 1], true)) {
+        $_SESSION["flash_error"] = "Invalid employee values.";
+        header("Location: edit_employee.php?id=" . $employee_id);
+        exit;
+    }
+    $stmt = $conn->prepare("UPDATE employees SET employee_no = ?, employee_name = ?, branch_id = ?, location_id = ?, designation = ?, employee_category = ?, is_active = ? WHERE employee_id = ?");
+    $stmt->bind_param("ssiissii", $employee_no, $employee_name, $branch_id, $location_id, $designation, $employee_category, $is_active, $employee_id);
+    if ($stmt->execute()) {
         $_SESSION["flash_message"] = "Employee updated successfully.";
+        auditEvent($conn, "employee_updated", "employee", $employee_id);
         header("Location: employees.php");
         exit;
     } else {
@@ -100,6 +90,7 @@ require_once "../includes/header.php";
     <div class="panel-title">Edit Employee</div>
 
     <form method="post" class="form-grid">
+        <?php echo csrfField(); ?>
 
         <div>
             <label for="employee_no">Employee No</label>

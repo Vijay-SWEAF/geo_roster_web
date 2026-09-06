@@ -67,6 +67,11 @@ require_once "includes/header.php";
     Management Dashboard
 </a>
 
+<a class="card" href="kyc/review_queue.php">
+    <div class="card-icon">🛡️</div>
+    KYC Review Queue
+</a>
+
 <a class="card" href="admin/user_management.php">
     <div class="card-icon">👤</div>
     User Management
@@ -119,6 +124,11 @@ require_once "includes/header.php";
     <a class="card" href="management_dashboard.php">
     <div class="card-icon">📈</div>
     Management Dashboard
+</a>
+
+<a class="card" href="kyc/review_queue.php">
+    <div class="card-icon">🛡️</div>
+    KYC Review Queue
 </a>
 
 <?php } ?>

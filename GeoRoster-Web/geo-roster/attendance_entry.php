@@ -1,8 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require_once "includes/auth_check.php";
 require_once "config/database.php";
 
@@ -12,24 +8,20 @@ $has_ot_expense_override = ($user_role === "HO User" || $user_role === "Admin");
 
 $date = date("Y-m-d");
 if (isset($_GET["attendance_date"]) && $_GET["attendance_date"] != "") {
-    $date = $_GET["attendance_date"];
+    $date = validDateValue($_GET["attendance_date"]) ?: $date;
 }
 
 $selected_branch_id = "";
 $user_branch_id = "";
 $selected_category = isset($_GET["employee_category"]) ? $_GET["employee_category"] : "All";
-$selected_location_id = isset($_GET["location_id"]) ? (int)$_GET["location_id"] : 0;
+$selected_location_id = validPositiveInt($_GET["location_id"] ?? null) ?: 0;
 $locations = [];
 
-$user_result = $conn->query("
-    SELECT user_id, full_name, role_name, branch_id
-    FROM users
-    WHERE user_id = '$user_id'
-    LIMIT 1
-");
+$user_result = preparedResult($conn, "SELECT user_id, full_name, role_name, branch_id FROM users WHERE user_id = ? LIMIT 1", "i", [$user_id]);
 
 if (!$user_result || $user_result->num_rows == 0) {
-    die("User record not found.");
+    error_log("Attendance user record not found.");
+    exit("Unable to load attendance.");
 }
 
 $user_row = $user_result->fetch_assoc();
@@ -39,23 +31,18 @@ if ($user_role == "Branch User") {
     $selected_branch_id = $user_branch_id;
 } else {
     if (isset($_GET["branch_id"])) {
-        $selected_branch_id = $_GET["branch_id"];
+        $selected_branch_id = validPositiveInt($_GET["branch_id"] ?? null) ?: "";
     }
 }
 
 $branches = $conn->query("SELECT branch_id, branch_name FROM branches ORDER BY branch_name");
 if (!$branches) {
-    die("Branch query failed: " . $conn->error);
+    error_log("Attendance branch query failed: " . $conn->error);
+    exit("Unable to load branches.");
 }
 
 if ($selected_branch_id != "") {
-    $location_result = $conn->query("
-        SELECT location_id, location_name
-        FROM branch_locations
-        WHERE branch_id = '$selected_branch_id'
-        AND is_active = 1
-        ORDER BY location_name
-    ");
+    $location_result = preparedResult($conn, "SELECT location_id, location_name FROM branch_locations WHERE branch_id = ? AND is_active = 1 ORDER BY location_name", "i", [(int)$selected_branch_id]);
 
     if ($location_result) {
         while ($loc = $location_result->fetch_assoc()) {
@@ -73,7 +60,8 @@ $leave_type_result = $conn->query("
 ");
 
 if (!$leave_type_result) {
-    die("Leave type query failed: " . $conn->error);
+    error_log("Attendance leave type query failed: " . $conn->error);
+    exit("Unable to load leave types.");
 }
 
 while ($lt = $leave_type_result->fetch_assoc()) {
@@ -88,12 +76,7 @@ $existing_attendance = [];
 
 if ($selected_branch_id != "") {
 
-    $attendance_result = $conn->query("
-    SELECT employee_id, status_code, leave_type_id, remarks, ot_hours, other_expense
-    FROM attendance_entries
-    WHERE branch_id = '$selected_branch_id'
-    AND attendance_date = '$date'
-");
+    $attendance_result = preparedResult($conn, "SELECT employee_id, status_code, leave_type_id, remarks, ot_hours, other_expense FROM attendance_entries WHERE branch_id = ? AND attendance_date = ?", "is", [(int)$selected_branch_id, $date]);
 
     if ($attendance_result) {
         while ($a = $attendance_result->fetch_assoc()) {
@@ -117,7 +100,7 @@ if ($selected_location_id > 0) {
     $location_condition .= " AND e.location_id = '$selected_location_id' ";
 }
 
-    $employees = $conn->query("
+    $employee_sql = "
     SELECT 
         e.employee_id,
         e.employee_no,
@@ -132,7 +115,7 @@ if ($selected_location_id > 0) {
     FROM employees e
     LEFT JOIN branches b ON e.branch_id = b.branch_id
     LEFT JOIN branch_locations bl ON e.location_id = bl.location_id
-    WHERE e.branch_id = '$selected_branch_id'
+    WHERE e.branch_id = ?
     $category_condition
     $location_condition
     ORDER BY 
@@ -142,10 +125,24 @@ if ($selected_location_id > 0) {
             ELSE 3
         END,
         e.employee_name
-");
+    ";
+    $employee_types = "i";
+    $employee_params = [(int)$selected_branch_id];
+    if ($selected_category == "Staff" || $selected_category == "Labour") {
+        $employee_sql = str_replace("$category_condition", " AND e.employee_category = ? ", $employee_sql);
+        $employee_types .= "s";
+        $employee_params[] = $selected_category;
+    }
+    if ($selected_location_id > 0) {
+        $employee_sql = str_replace("$location_condition", " AND e.location_id = ? ", $employee_sql);
+        $employee_types .= "i";
+        $employee_params[] = $selected_location_id;
+    }
+    $employees = preparedResult($conn, $employee_sql, $employee_types, $employee_params);
 
     if (!$employees) {
-        die("Employee query failed: " . $conn->error);
+        error_log("Attendance employee query failed: " . $conn->error);
+        exit("Unable to load employees.");
     }
 
     while ($row = $employees->fetch_assoc()) {
@@ -157,7 +154,7 @@ if ($selected_location_id > 0) {
         foreach ($leave_types as $lt) {
             $current_leave_type_id = (int)$lt["leave_type_id"];
 
-            $policy_result = $conn->query("\n                SELECT entitled_days\n                FROM leave_policy\n                WHERE policy_year = '$selected_year'\n                AND employee_category = '" . $conn->real_escape_string($employee_category) . "'\n                AND leave_type_id = '$current_leave_type_id'\n                LIMIT 1\n            ");
+            $policy_result = preparedResult($conn, "SELECT entitled_days FROM leave_policy WHERE policy_year = ? AND employee_category = ? AND leave_type_id = ? LIMIT 1", "isi", [(int)$selected_year, $employee_category, $current_leave_type_id]);
 
             $entitled = 0;
             if ($policy_result && $policy_result->num_rows > 0) {
@@ -165,7 +162,7 @@ if ($selected_location_id > 0) {
                 $entitled = (float)$policy_row["entitled_days"];
             }
 
-            $availed_result = $conn->query("\n                SELECT COUNT(*) AS used_days\n                FROM attendance_entries\n                WHERE employee_id = '$employee_id'\n                AND status_code = 'L'\n                AND leave_type_id = '$current_leave_type_id'\n                AND YEAR(attendance_date) = '$selected_year'\n            ");
+            $availed_result = preparedResult($conn, "SELECT COUNT(*) AS used_days FROM attendance_entries WHERE employee_id = ? AND status_code = 'L' AND leave_type_id = ? AND YEAR(attendance_date) = ?", "iii", [$employee_id, $current_leave_type_id, (int)$selected_year]);
 
             $availed = 0;
             if ($availed_result) {
@@ -218,7 +215,7 @@ require_once "includes/header.php";
 
                 <label>Branch</label>
                 <?php
-                $branch_name_result = $conn->query("SELECT branch_name FROM branches WHERE branch_id = '$user_branch_id' LIMIT 1");
+                $branch_name_result = preparedResult($conn, "SELECT branch_name FROM branches WHERE branch_id = ? LIMIT 1", "i", [(int)$user_branch_id]);
                 $branch_name = "";
                 if ($branch_name_result && $branch_name_result->num_rows > 0) {
                     $branch_name_row = $branch_name_result->fetch_assoc();
@@ -277,6 +274,7 @@ require_once "includes/header.php";
 <?php if ($selected_branch_id != "" && count($employee_rows) > 0) { ?>
 
 <form method="post" action="save_attendance.php">
+<?php echo csrfField(); ?>
 
 <input type="hidden" name="attendance_date" value="<?php echo htmlspecialchars($date); ?>">
 

@@ -1,6 +1,7 @@
 <?php
 require_once "../includes/auth_check.php";
 require_once "../config/database.php";
+require_once "../includes/security.php";
 
 if ($_SESSION["role"] != "Admin" && $_SESSION["role"] != "HO User") {
     $_SESSION["flash_error"] = "Access denied.";
@@ -9,20 +10,24 @@ if ($_SESSION["role"] != "Admin" && $_SESSION["role"] != "HO User") {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $location_id = !empty($_POST["location_id"]) ? (int)$_POST["location_id"] : "NULL";
+    requireCsrf();
+    $location_id = !empty($_POST["location_id"]) ? (int)$_POST["location_id"] : null;
     $employee_no = trim($_POST["employee_no"]);
     $employee_name = trim($_POST["employee_name"]);
-    $branch_id = $_POST["branch_id"];
+    $branch_id = validPositiveInt($_POST["branch_id"] ?? null);
     $designation = trim($_POST["designation"]);
     $employee_category = $_POST["employee_category"];
 
-    $sql = "INSERT INTO employees 
-        (employee_no, employee_name, branch_id, location_id, designation, employee_category)
-        VALUES 
-        ('$employee_no', '$employee_name', '$branch_id', $location_id, '$designation', '$employee_category')";
-
-    if ($conn->query($sql)) {
+    if (!$branch_id || !in_array($employee_category, ["Staff", "Labour"], true)) {
+        $_SESSION["flash_error"] = "Invalid employee assignment.";
+        header("Location: employees.php");
+        exit;
+    }
+    $stmt = $conn->prepare("INSERT INTO employees (employee_no, employee_name, branch_id, location_id, designation, employee_category) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssiiss", $employee_no, $employee_name, $branch_id, $location_id, $designation, $employee_category);
+    if ($stmt->execute()) {
         $_SESSION["flash_message"] = "Employee added successfully.";
+        auditEvent($conn, "employee_created", "employee", $stmt->insert_id);
     } else {
         $_SESSION["flash_error"] = "Unable to add employee.";
     }
@@ -41,10 +46,12 @@ $locations = $conn->query("
 ");
 
 $employees = $conn->query("
-    SELECT e.*, b.branch_name, bl.location_name
+    SELECT e.*, b.branch_name, bl.location_name, k.kyc_status, a.amendment_status
     FROM employees e
     LEFT JOIN branches b ON e.branch_id = b.branch_id
     LEFT JOIN branch_locations bl ON e.location_id = bl.location_id
+    LEFT JOIN employee_kyc k ON e.employee_id = k.employee_id
+    LEFT JOIN employee_kyc_amendments a ON k.kyc_id = a.kyc_id AND a.amendment_status IN ('DRAFT', 'SUBMITTED', 'UNDER_REVIEW')
     ORDER BY e.employee_name
 ");
 
@@ -63,6 +70,7 @@ require_once "../includes/header.php";
         <div class="panel-title">Add New Employee</div>
 
         <form method="post" class="form-grid">
+            <?php echo csrfField(); ?>
 
             <div class="top-filters-flex">
     <div class="filter-box">
@@ -145,14 +153,15 @@ require_once "../includes/header.php";
             <table class="employee-master-table">
                 <thead>
                     <tr>
-                        <th style="width:150px;">Employee No</th>
-                        <th style="width:260px;">Employee Name</th>
-                        <th style="width:180px;">Branch</th>
-                        <th style="width:180px;">Sub-Location</th>
-                        <th style="width:180px;">Designation</th>
-                        <th style="width:120px;">Category</th>
-                        <th style="width:120px;">Status</th>
-                        <th style="width:180px;">Action</th>
+                        <th style="width:140px;">Employee No</th>
+                        <th style="width:220px;">Employee Name</th>
+                        <th style="width:160px;">Branch</th>
+                        <th style="width:160px;">Sub-Location</th>
+                        <th style="width:160px;">Designation</th>
+                        <th style="width:110px;">Category</th>
+                        <th style="width:110px;">Status</th>
+                        <th style="width:130px;">KYC Status</th>
+                        <th style="width:200px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -172,8 +181,40 @@ require_once "../includes/header.php";
         <span style="color:red; font-weight:600;">Inactive</span>
     <?php } ?>
 </td>
+<td>
+    <?php
+    $kStatus = $e['kyc_status'] ?? 'NOT_STARTED';
+    $aStatus = $e['amendment_status'] ?? null;
+    if ($kStatus === 'VERIFIED' && $aStatus) {
+        $statusLabel = 'Verified (Amend ' . str_replace('_', ' ', $aStatus) . ')';
+    } elseif ($kStatus === 'VERIFIED') {
+        $statusLabel = 'Internally Verified';
+    } else {
+        $statusLabel = str_replace('_', ' ', $kStatus);
+    }
+    $badgeStyle = 'background:#f1f5f9; color:#475569; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; display:inline-block;';
+    if ($kStatus === 'VERIFIED' && $aStatus) {
+        $badgeStyle = 'background:#fef3c7; color:#b45309; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; display:inline-block;';
+    } elseif ($kStatus === 'VERIFIED') {
+        $badgeStyle = 'background:#ccfbf1; color:#0f766e; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; display:inline-block;';
+    } elseif ($kStatus === 'REJECTED') {
+        $badgeStyle = 'background:#fee2e2; color:#b91c1c; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; display:inline-block;';
+    } elseif ($kStatus === 'SUBMITTED' || $kStatus === 'UNDER_REVIEW') {
+        $badgeStyle = 'background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; display:inline-block;';
+    } elseif ($kStatus === 'DRAFT') {
+        $badgeStyle = 'background:#fef3c7; color:#b45309; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; display:inline-block;';
+    }
+    ?>
+    <span style="<?php echo $badgeStyle; ?>"><?php echo htmlspecialchars($statusLabel); ?></span>
+</td>
 
 <td style="white-space:nowrap;">
+
+    <a href="../kyc/employee_kyc.php?employee_id=<?php echo (int)$e['employee_id']; ?>"
+       class="action-icon primary"
+       title="View KYC Profile">
+        🛡️
+    </a>
 
     <a href="edit_employee.php?id=<?php echo (int)$e['employee_id']; ?>"
        class="action-icon primary"
@@ -182,19 +223,19 @@ require_once "../includes/header.php";
     </a>
 
     <?php if ((int)$e['is_active'] === 1) { ?>
-        <a href="toggle_employee.php?id=<?php echo (int)$e['employee_id']; ?>&action=deactivate"
-           class="action-icon danger employee-status-link"
-           title="Deactivate Employee"
-           data-message="Are you sure you want to deactivate this employee?">
-            ⛔
-        </a>
+        <form method="post" action="toggle_employee.php" style="display:inline;">
+            <?php echo csrfField(); ?>
+            <input type="hidden" name="id" value="<?php echo (int)$e['employee_id']; ?>">
+            <input type="hidden" name="action" value="deactivate">
+            <button type="submit" class="action-icon danger" title="Deactivate Employee">⛔</button>
+        </form>
     <?php } else { ?>
-        <a href="toggle_employee.php?id=<?php echo (int)$e['employee_id']; ?>&action=activate"
-           class="action-icon success employee-status-link"
-           title="Activate Employee"
-           data-message="Are you sure you want to activate this employee?">
-            ✅
-        </a>
+        <form method="post" action="toggle_employee.php" style="display:inline;">
+            <?php echo csrfField(); ?>
+            <input type="hidden" name="id" value="<?php echo (int)$e['employee_id']; ?>">
+            <input type="hidden" name="action" value="activate">
+            <button type="submit" class="action-icon success" title="Activate Employee">✅</button>
+        </form>
     <?php } ?>
 
 </td>
