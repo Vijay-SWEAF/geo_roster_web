@@ -1339,6 +1339,10 @@ function approveKycAmendment($conn, $employeeId, $amendmentId) {
         $updateKyc->bind_param('ii', $actorId, $kycId);
         $updateKyc->execute();
 
+        if (function_exists('promotePendingKycDocuments')) {
+            promotePendingKycDocuments($conn, $employeeId, $amendmentId);
+        }
+
         // Record history
         $histStmt = $conn->prepare('INSERT INTO employee_kyc_history (kyc_id, employee_id, actor_user_id, action, previous_status, new_status, remarks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
         $action = 'amendment_approved';
@@ -1405,6 +1409,10 @@ function rejectKycAmendment($conn, $employeeId, $amendmentId, $reason) {
         $updateStmt->bind_param('ssi', $newStatus, $reason, $amendmentId);
         $updateStmt->execute();
 
+        if (function_exists('rejectPendingKycDocuments')) {
+            rejectPendingKycDocuments($conn, $employeeId, $amendmentId, KYC_DOCUMENT_STATUS_REJECTED);
+        }
+
         $histStmt = $conn->prepare('INSERT INTO employee_kyc_history (kyc_id, employee_id, actor_user_id, action, previous_status, new_status, remarks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
         $action = 'amendment_rejected';
         $prevStatus = KYC_STATUS_VERIFIED;
@@ -1460,6 +1468,10 @@ function cancelKycAmendment($conn, $employeeId, $amendmentId) {
         $updateStmt = $conn->prepare('UPDATE employee_kyc_amendments SET amendment_status = ?, updated_at = NOW() WHERE amendment_id = ?');
         $updateStmt->bind_param('si', $newStatus, $amendmentId);
         $updateStmt->execute();
+
+        if (function_exists('rejectPendingKycDocuments')) {
+            rejectPendingKycDocuments($conn, $employeeId, $amendmentId, KYC_DOCUMENT_STATUS_CANCELLED);
+        }
 
         $histStmt = $conn->prepare('INSERT INTO employee_kyc_history (kyc_id, employee_id, actor_user_id, action, previous_status, new_status, remarks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
         $action = 'amendment_cancelled';

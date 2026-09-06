@@ -4,7 +4,7 @@ require_once "../includes/auth_check.php";
 require_once "../config/database.php";
 require_once "../includes/security.php";
 require_once "../includes/functions.php";
-require_once "../includes/kyc_service.php";
+require_once "../includes/kyc_document_service.php";
 
 $employeeId = validPositiveInt($_GET["employee_id"] ?? ($_POST["employee_id"] ?? null));
 if (!$employeeId) {
@@ -164,6 +164,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 $kycProfile = getKycProfile($conn, $employeeId);
 $kycPrivate = getKycPrivateData($conn, $employeeId);
 $kycStatus = $kycProfile ? $kycProfile["kyc_status"] : KYC_STATUS_NOT_STARTED;
+$documentCount = $kycProfile ? count(getKycDocuments($conn, $employeeId)) : 0;
 $kycHistory = $kycProfile ? getKycHistory($conn, (int)($kycProfile["kyc_id"] ?? 0)) : [];
 
 $activeAmendment = $kycProfile ? getKycActiveAmendment($conn, (int)$kycProfile["kyc_id"]) : null;
@@ -823,6 +824,16 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
 
         <?php } ?>
 
+
+        <div class="panel-card" style="margin-top:16px;">
+            <div class="panel-title">KYC Documents</div>
+            <?php if ($canSensitive) { ?>
+                <p style="font-size:13px; color:#475569;">Managed document versions: <?php echo (int)$documentCount; ?></p>
+                <a class="btn-secondary-link" href="documents.php?employee_id=<?php echo $employeeId; ?>">Manage KYC Documents</a>
+            <?php } else { ?>
+                <p style="font-size:13px; color:#64748b;">Documents are managed by an authorized KYC Officer.</p>
+            <?php } ?>
+        </div>
 
         <div class="table-wrap">
             <table>
