@@ -81,6 +81,25 @@ function kycDocumentPath($root, $storageKey) {
     return $path;
 }
 
+function prepareKycDocumentPath($root, $storageKey) {
+    if (!preg_match('/\A[0-9a-f]{2}\/([0-9a-f]{2})\/[0-9a-f]{64}\.vault\z/', $storageKey)) {
+        throw new RuntimeException('KYC document vault is unavailable.');
+    }
+    $root = rtrim($root, DIRECTORY_SEPARATOR);
+    $parts = explode('/', $storageKey);
+    $shardOne = $root . DIRECTORY_SEPARATOR . $parts[0];
+    $shardTwo = $shardOne . DIRECTORY_SEPARATOR . $parts[1];
+    if (!is_dir($shardOne) && !mkdir($shardOne, 0700, true)) {
+        throw new RuntimeException('KYC document vault is unavailable.');
+    }
+    if (!is_dir($shardTwo) && !mkdir($shardTwo, 0700, true)) {
+        throw new RuntimeException('KYC document vault is unavailable.');
+    }
+    @chmod($shardOne, 0700);
+    @chmod($shardTwo, 0700);
+    return kycDocumentPath($root, $storageKey);
+}
+
 function encryptKycDocument($plaintext, $key = null) {
     $key = deriveKycDocumentEncryptionKey($key);
     if (function_exists('sodium_crypto_secretbox')) {
@@ -179,18 +198,17 @@ function getKycDocuments($conn, $employeeId) {
     $rows = []; $result = $stmt->get_result(); while ($row = $result->fetch_assoc()) $rows[] = $row; return $rows;
 }
 
-function uploadKycDocument($conn, $employeeId, $documentType, $documentLabel, $file, $actorId) {
+function uploadKycDocument($conn, $employeeId, $documentType, $documentLabel, $file, $actorId = null) {
     $auth = requireAuthoritativeKycAccess($conn, $employeeId);
     if (!$auth['can_sensitive']) { http_response_code(403); exit('KYC document permission required.'); }
+    $actorId = (int)$auth['user']['user_id'];
     $profile = getKycProfile($conn, $employeeId);
     if (!$profile) throw new InvalidArgumentException('KYC profile not found.');
     $activeAmendment = getKycActiveAmendment($conn, (int)$profile['kyc_id']);
     if ($profile['kyc_status'] === KYC_STATUS_VERIFIED && !$activeAmendment) throw new InvalidArgumentException('Verified KYC requires an active amendment for document replacement.');
     [$original, $mime, $extension, $label] = validateKycDocumentUpload($file, $documentType, $documentLabel);
     $root = assertKycVaultWritable();
-    $storageKey = generateKycStorageKey(); $finalPath = kycDocumentPath($root, $storageKey); $dir = dirname($finalPath);
-    if (!is_dir($dir) && !mkdir($dir, 0700, true)) throw new RuntimeException('KYC document vault is unavailable.');
-    @chmod($dir, 0700);
+    $storageKey = generateKycStorageKey(); $finalPath = prepareKycDocumentPath($root, $storageKey);
     $plaintext = file_get_contents($file['tmp_name']);
     $encrypted = encryptKycDocument($plaintext);
     $tempPath = tempnam($root, '.kyc-upload-');
@@ -204,7 +222,11 @@ function uploadKycDocument($conn, $employeeId, $documentType, $documentLabel, $f
     try {
         $lock = $conn->prepare('SELECT COALESCE(MAX(version_no), 0) FROM employee_kyc_documents WHERE employee_id = ? AND document_type = ? FOR UPDATE');
         $lock->bind_param('is', $employeeId, $documentType); $lock->execute(); $version = (int)$lock->get_result()->fetch_row()[0] + 1;
+        $oldDocumentId = null;
         if ($isCurrent) {
+            $old = $conn->prepare("SELECT document_id FROM employee_kyc_documents WHERE employee_id = ? AND document_type = ? AND is_current = 1 AND lifecycle_status = 'ACTIVE' FOR UPDATE");
+            $old->bind_param('is', $employeeId, $documentType); $old->execute();
+            $oldDocumentId = ($old->get_result()->fetch_assoc()['document_id'] ?? null);
             $old = $conn->prepare("UPDATE employee_kyc_documents SET is_current = 0, lifecycle_status = 'SUPERSEDED', superseded_at = NOW(), updated_at = NOW() WHERE employee_id = ? AND document_type = ? AND is_current = 1 AND lifecycle_status = 'ACTIVE'");
             $old->bind_param('is', $employeeId, $documentType); $old->execute();
         }
@@ -215,8 +237,12 @@ function uploadKycDocument($conn, $employeeId, $documentType, $documentLabel, $f
         $historyAction = 'kyc_document_uploaded';
         $historyRemark = 'Document type ' . $documentType . ', version ' . $version . ', status ' . $status;
         $history = $conn->prepare('INSERT INTO employee_kyc_history (kyc_id, employee_id, actor_user_id, action, previous_status, new_status, remarks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
-        $previousStatus = KYC_STATUS_VERIFIED; $newStatus = KYC_STATUS_VERIFIED;
+        $previousStatus = (string)$profile['kyc_status']; $newStatus = (string)$profile['kyc_status'];
         $history->bind_param('iiissss', $kycId, $employeeId, $actorId, $historyAction, $previousStatus, $newStatus, $historyRemark); $history->execute();
+        if ($oldDocumentId !== null) {
+            $supersede = $conn->prepare('UPDATE employee_kyc_documents SET superseded_by = ? WHERE document_id = ?');
+            $supersede->bind_param('ii', $documentId, $oldDocumentId); $supersede->execute();
+        }
         $conn->commit();
         auditEvent($conn, 'kyc_document_uploaded', 'employee_kyc_document', $documentId, ['document_type'=>$documentType,'version'=>$version,'status'=>$status]);
         return $documentId;
@@ -227,10 +253,17 @@ function streamKycDocument($conn, $documentId, $mode) {
     [$user, $document] = requireKycDocumentAccess($conn, $documentId);
     $root = getKycVaultRoot(); $path = kycDocumentPath($root, $document['storage_key']);
     if (!is_file($path) || !is_readable($path)) { http_response_code(404); exit('Document not found.'); }
-    try { $plain = decryptKycDocument(file_get_contents($path)); } catch (Throwable $e) { error_log('KYC document stream failed.'); http_response_code(500); exit('Document unavailable.'); }
+    try {
+        $plain = decryptKycDocument(file_get_contents($path));
+        $expectedHmac = (string)$document['content_hmac'];
+        $actualHmac = hash_hmac('sha256', $plain, deriveKycDocumentHmacKey());
+        if ($expectedHmac === '' || !hash_equals($expectedHmac, $actualHmac)) {
+            throw new RuntimeException('KYC document integrity check failed.');
+        }
+    } catch (Throwable $e) { error_log('KYC document stream failed.'); http_response_code(500); exit('Document unavailable.'); }
     auditEvent($conn, $mode === 'download' ? 'kyc_document_downloaded' : 'kyc_document_viewed', 'employee_kyc_document', $documentId, ['document_type'=>$document['document_type'],'version'=>(int)$document['version_no']]);
     $safeName = preg_replace('/[^A-Za-z0-9_-]/', '_', $document['document_type']) . '_v' . (int)$document['version_no'] . '.' . $document['file_extension'];
-    header('Content-Type: ' . $document['validated_mime']); header('Content-Disposition: ' . ($mode === 'download' ? 'attachment' : 'inline') . '; filename="' . $safeName . '"'); header('X-Content-Type-Options: nosniff'); header('X-Frame-Options: SAMEORIGIN'); header('Cache-Control: private, no-store, no-cache, must-revalidate'); header('Pragma: no-cache'); header('Expires: 0'); echo $plain; exit;
+    header('Content-Type: ' . $document['validated_mime']); header('Content-Length: ' . strlen($plain)); header('Content-Disposition: ' . ($mode === 'download' ? 'attachment' : 'inline') . '; filename="' . $safeName . '"'); header('X-Content-Type-Options: nosniff'); header('X-Frame-Options: SAMEORIGIN'); header('Cache-Control: private, no-store, no-cache, must-revalidate'); header('Pragma: no-cache'); header('Expires: 0'); echo $plain; exit;
 }
 
 function promotePendingKycDocuments($conn, $employeeId, $amendmentId) {
@@ -238,11 +271,18 @@ function promotePendingKycDocuments($conn, $employeeId, $amendmentId) {
     $pending = KYC_DOCUMENT_STATUS_PENDING_AMENDMENT; $employeeId=(int)$employeeId; $amendmentId=(int)$amendmentId;
     $stmt->bind_param('iis', $employeeId, $amendmentId, $pending); $stmt->execute(); $result = $stmt->get_result();
     while ($document = $result->fetch_assoc()) {
+        $old = $conn->prepare("SELECT document_id FROM employee_kyc_documents WHERE employee_id = ? AND document_type = ? AND is_current = 1 AND lifecycle_status = 'ACTIVE' FOR UPDATE");
+        $old->bind_param('is', $employeeId, $document['document_type']); $old->execute();
+        $oldDocumentId = ($old->get_result()->fetch_assoc()['document_id'] ?? null);
         $old = $conn->prepare("UPDATE employee_kyc_documents SET is_current = 0, lifecycle_status = 'SUPERSEDED', superseded_at = NOW(), updated_at = NOW() WHERE employee_id = ? AND document_type = ? AND is_current = 1 AND lifecycle_status = 'ACTIVE'");
         $old->bind_param('is', $employeeId, $document['document_type']); $old->execute();
         $active = KYC_DOCUMENT_STATUS_ACTIVE; $current = 1; $documentId=(int)$document['document_id'];
         $update = $conn->prepare('UPDATE employee_kyc_documents SET is_current = ?, lifecycle_status = ?, updated_at = NOW() WHERE document_id = ?');
         $update->bind_param('isi', $current, $active, $documentId); $update->execute();
+        if ($oldDocumentId !== null) {
+            $supersede = $conn->prepare('UPDATE employee_kyc_documents SET superseded_by = ? WHERE document_id = ?');
+            $supersede->bind_param('ii', $documentId, $oldDocumentId); $supersede->execute();
+        }
         auditEvent($conn, 'kyc_document_promoted', 'employee_kyc_document', $documentId, ['amendment_id'=>$amendmentId]);
     }
 }

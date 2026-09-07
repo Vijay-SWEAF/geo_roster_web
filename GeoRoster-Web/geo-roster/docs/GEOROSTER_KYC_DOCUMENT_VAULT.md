@@ -24,7 +24,7 @@ Document bytes are encrypted with an authenticated versioned envelope using a do
 
 ## Metadata and versions
 
-MySQL stores metadata only. Each document has an immutable version and random unique storage key. Replacement creates a new version and marks the previous current version SUPERSEDED. Physical historical objects are never deleted.
+MySQL stores metadata only. Each document has an immutable version and random unique storage key. Replacement creates a new version, marks the previous current version SUPERSEDED, and records the replacement in `superseded_by`. Physical historical objects are never deleted. KYC profile and amendment foreign keys use `RESTRICT` so document evidence cannot disappear through parent deletion.
 
 Unverified KYC uploads can be ACTIVE/current. VERIFIED KYC requires an active amendment for replacement; those uploads are PENDING_AMENDMENT until Admin amendment approval. Approval promotes them and supersedes the prior current version. Rejection/cancellation marks pending rows rejected/cancelled and leaves the verified version current.
 
@@ -34,7 +34,7 @@ Documents are not required for KYC submission in this phase.
 
 Admin and active KYC Officers may upload, view, download, and inspect history within current role/branch scope. Regular HO and Branch users receive only a safe managed-by-Officer indicator. Every operation re-queries the current user, active state, role, branch, and KYC Officer permission. Document content is streamed only through POST + CSRF authenticated PHP, never by public URL.
 
-Stream responses use validated MIME, safe generic filenames, `nosniff`, `SAMEORIGIN`, and no-store cache headers. Decrypted bytes are not written to public_html or a decrypted temporary file.
+Before streaming, the service decrypts the object and verifies its content HMAC against the database metadata. Swapped objects, metadata tampering, wrong keys, and ciphertext tampering therefore fail closed. Stream responses use validated MIME, a safe generic filename, `Content-Length`, `nosniff`, `SAMEORIGIN`, and no-store cache headers. Decrypted bytes are not written to public_html or a decrypted temporary file.
 
 ## Auditing and deferred policy
 

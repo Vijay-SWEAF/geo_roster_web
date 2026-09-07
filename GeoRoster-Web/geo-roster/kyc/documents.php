@@ -12,7 +12,7 @@ $auth = requireAuthoritativeKycAccess($conn, $employeeId);
 $employee = $auth['employee']; $user = $auth['user'];
 $canManage = !empty($auth['can_sensitive']);
 $profile = getKycProfile($conn, $employeeId);
-$documents = $profile ? getKycDocuments($conn, $employeeId) : [];
+$documents = ($profile && $canManage) ? getKycDocuments($conn, $employeeId) : [];
 $pageTitle = 'KYC Documents';
 $pageSubtitle = 'Private, audited document vault';
 $basePath = '../';
@@ -45,6 +45,7 @@ require_once '../includes/header.php';
         <p>Documents are managed by an authorized KYC Officer.</p>
     <?php } ?>
 </div>
+<?php if ($canManage) { ?>
 <div class="panel-card">
     <div class="panel-title">Document Versions</div>
     <div class="table-wrap"><table><thead><tr><th>Type</th><th>Version</th><th>Status</th><th>Current</th><th>File Type</th><th>Size</th><th>Uploaded At</th><th>Action</th></tr></thead><tbody>
@@ -53,4 +54,5 @@ require_once '../includes/header.php';
     <?php } if (!$documents) { ?><tr><td colspan="8">No documents recorded.</td></tr><?php } ?>
     </tbody></table></div>
 </div>
+<?php } ?>
 <?php require_once '../includes/footer.php'; ?>

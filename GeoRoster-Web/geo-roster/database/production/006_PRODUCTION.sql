@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS employee_kyc_documents (
     KEY idx_kyc_documents_status (lifecycle_status, is_current),
     CONSTRAINT chk_kyc_document_type CHECK (document_type IN ('PAN_CARD', 'AADHAAR_CARD', 'UAN_PROOF', 'ESIC_CARD', 'ADDRESS_PROOF', 'EMPLOYEE_PHOTO', 'OTHER_KYC')),
     CONSTRAINT chk_kyc_document_status CHECK (lifecycle_status IN ('ACTIVE', 'PENDING_AMENDMENT', 'SUPERSEDED', 'REJECTED', 'CANCELLED')),
-    CONSTRAINT fk_kyc_document_kyc FOREIGN KEY (kyc_id) REFERENCES employee_kyc(kyc_id) ON DELETE CASCADE,
+    CONSTRAINT fk_kyc_document_kyc FOREIGN KEY (kyc_id) REFERENCES employee_kyc(kyc_id) ON DELETE RESTRICT,
     CONSTRAINT fk_kyc_document_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_kyc_document_amendment FOREIGN KEY (amendment_id) REFERENCES employee_kyc_amendments(amendment_id) ON DELETE SET NULL,
+    CONSTRAINT fk_kyc_document_amendment FOREIGN KEY (amendment_id) REFERENCES employee_kyc_amendments(amendment_id) ON DELETE RESTRICT,
     CONSTRAINT fk_kyc_document_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(user_id) ON DELETE RESTRICT,
     CONSTRAINT fk_kyc_document_superseded_by FOREIGN KEY (superseded_by) REFERENCES employee_kyc_documents(document_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

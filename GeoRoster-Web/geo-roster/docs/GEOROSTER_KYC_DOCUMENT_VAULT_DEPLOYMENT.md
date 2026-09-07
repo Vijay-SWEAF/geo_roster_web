@@ -22,7 +22,7 @@ Do not place the vault under `public_html`, `uploads`, the Git repository, or th
 2. Run a read-only preflight against the intended GoDaddy MariaDB.
 3. Review and separately approve `database/production/006_PRODUCTION.sql`.
 4. Execute Migration 006 manually only after approval.
-5. Run `006_VERIFY.sql` and confirm zero initial document rows.
+5. Run `006_VERIFY.sql` and confirm zero initial document rows plus `RESTRICT` for the KYC, employee, amendment, and uploader foreign keys. The self-reference on `superseded_by` intentionally remains `SET NULL`.
 6. Create and permission the vault directory outside webroot.
 7. Configure `GEOROSTER_KYC_VAULT_PATH` privately if desired.
 8. Upload the matching PHP release only after database and vault checks pass.
