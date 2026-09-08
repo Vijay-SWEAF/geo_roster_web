@@ -1,8 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require_once "includes/auth_check.php";
 require_once "config/database.php";
 
@@ -14,9 +10,9 @@ if ($user_role !== "Admin" && $user_role !== "HO User") {
     exit;
 }
 
-$selected_date = $_GET["date"] ?? date("Y-m-d");
-$selected_month = $_GET["month"] ?? date("Y-m");
-$selected_branch_id = $_GET["branch_id"] ?? "";
+$selected_date = validDateValue($_GET["date"] ?? date("Y-m-d")) ?: date("Y-m-d");
+$selected_month = validMonthValue($_GET["month"] ?? date("Y-m")) ?: date("Y-m");
+$selected_branch_id = validPositiveInt($_GET["branch_id"] ?? null) ?: "";
 
 $branches = $conn->query("
     SELECT branch_id, branch_name
@@ -25,11 +21,6 @@ $branches = $conn->query("
 ");
 
 /* Branch location toggle status */
-$location_toggle_where = "WHERE bl.is_active = 1";
-if ($selected_branch_id !== "") {
-    $location_toggle_where .= " AND bl.branch_id = '" . $conn->real_escape_string($selected_branch_id) . "'";
-}
-
 $location_toggle_sql = "
     SELECT
         b.branch_name,
@@ -39,11 +30,13 @@ $location_toggle_sql = "
         bl.is_active
     FROM branch_locations bl
     INNER JOIN branches b ON bl.branch_id = b.branch_id
-    $location_toggle_where
+    WHERE bl.is_active = 1
+    " . ($selected_branch_id !== "" ? " AND bl.branch_id = ?" : "") . "
     ORDER BY b.branch_name, bl.location_name
 ";
-
-$location_toggle_result = $conn->query($location_toggle_sql);
+$location_toggle_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $location_toggle_sql, "i", [(int)$selected_branch_id])
+    : $conn->query($location_toggle_sql);
 $location_toggle_rows = [];
 $location_toggle_summary = [
     "total_locations" => 0,
@@ -72,11 +65,6 @@ if ($location_toggle_result) {
     }
 }
 /* Top summary */
-$top_where = " WHERE attendance_date = '$selected_date' ";
-if ($selected_branch_id !== "") {
-    $top_where .= " AND branch_id = '$selected_branch_id' ";
-}
-
 $top_sql = "
     SELECT
         COUNT(*) AS total_records,
@@ -87,10 +75,12 @@ $top_sql = "
         SUM(ot_hours) AS total_ot,
         SUM(other_expense) AS total_expense
     FROM attendance_entries
-    $top_where
+    WHERE attendance_date = ?
+    " . ($selected_branch_id !== "" ? " AND branch_id = ?" : "") . "
 ";
-
-$top_result = $conn->query($top_sql);
+$top_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $top_sql, "si", [$selected_date, (int)$selected_branch_id])
+    : preparedResult($conn, $top_sql, "s", [$selected_date]);
 $top = [
     "total_records" => 0,
     "present_count" => 0,
@@ -106,13 +96,10 @@ if ($top_result && $top_result->num_rows > 0) {
 }
 
 /* Total employees */
-$emp_where = "";
-if ($selected_branch_id !== "") {
-    $emp_where = " WHERE branch_id = '$selected_branch_id' ";
-}
-
-$emp_count_sql = "SELECT COUNT(*) AS total_employees FROM employees $emp_where";
-$emp_count_result = $conn->query($emp_count_sql);
+$emp_count_sql = "SELECT COUNT(*) AS total_employees FROM employees" . ($selected_branch_id !== "" ? " WHERE branch_id = ?" : "");
+$emp_count_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $emp_count_sql, "i", [(int)$selected_branch_id])
+    : $conn->query($emp_count_sql);
 $total_employees = 0;
 if ($emp_count_result && $emp_count_result->num_rows > 0) {
     $emp_count_row = $emp_count_result->fetch_assoc();
@@ -140,13 +127,15 @@ $branch_today_sql = "
     LEFT JOIN employees e ON b.branch_id = e.branch_id
     LEFT JOIN attendance_entries a 
         ON a.employee_id = e.employee_id
-        AND a.attendance_date = '$selected_date'
-    " . ($selected_branch_id !== "" ? " WHERE b.branch_id = '$selected_branch_id' " : "") . "
+        AND a.attendance_date = ?
+    " . ($selected_branch_id !== "" ? " WHERE b.branch_id = ? " : "") . "
     GROUP BY b.branch_id, b.branch_name
     ORDER BY b.branch_name
 ";
 
-$branch_today_result = $conn->query($branch_today_sql);
+$branch_today_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $branch_today_sql, "si", [$selected_date, (int)$selected_branch_id])
+    : preparedResult($conn, $branch_today_sql, "s", [$selected_date]);
 $branch_rows = [];
 if ($branch_today_result) {
     while ($row = $branch_today_result->fetch_assoc()) {
@@ -163,13 +152,15 @@ $donut_sql = "
     FROM branches b
     LEFT JOIN attendance_entries a
         ON b.branch_id = a.branch_id
-        AND a.attendance_date = '$selected_date'
-    " . ($selected_branch_id !== "" ? " WHERE b.branch_id = '$selected_branch_id' " : "") . "
+        AND a.attendance_date = ?
+    " . ($selected_branch_id !== "" ? " WHERE b.branch_id = ? " : "") . "
     GROUP BY b.branch_id, b.branch_name
     ORDER BY b.branch_name
 ";
 
-$donut_result = $conn->query($donut_sql);
+$donut_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $donut_sql, "si", [$selected_date, (int)$selected_branch_id])
+    : preparedResult($conn, $donut_sql, "s", [$selected_date]);
 
 $donut_labels = [];
 $donut_present = [];
@@ -192,14 +183,16 @@ $top_absent_sql = "
     FROM branches b
     LEFT JOIN attendance_entries a
         ON b.branch_id = a.branch_id
-        AND a.attendance_date = '$selected_date'
-    " . ($selected_branch_id !== "" ? " WHERE b.branch_id = '$selected_branch_id' " : "") . "
+        AND a.attendance_date = ?
+    " . ($selected_branch_id !== "" ? " WHERE b.branch_id = ? " : "") . "
     GROUP BY b.branch_id, b.branch_name
     ORDER BY absent_count DESC, b.branch_name ASC
     LIMIT 5
 ";
 
-$top_absent_result = $conn->query($top_absent_sql);
+$top_absent_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $top_absent_sql, "si", [$selected_date, (int)$selected_branch_id])
+    : preparedResult($conn, $top_absent_sql, "s", [$selected_date]);
 $top_absent_rows = [];
 
 if ($top_absent_result) {
@@ -227,13 +220,13 @@ if (count($top_absent_rows) > 0) {
         FROM attendance_entries a
         INNER JOIN employees e ON a.employee_id = e.employee_id
         INNER JOIN branches b ON a.branch_id = b.branch_id
-        WHERE a.attendance_date = '$selected_date'
+        WHERE a.attendance_date = ?
         AND a.status_code = 'A'
-        AND b.branch_id IN ($branch_ids_str)
+        AND b.branch_id IN (" . implode(',', array_fill(0, count($branch_ids), '?')) . ")
         ORDER BY b.branch_name, e.employee_name
     ";
 
-    $absent_emp_result = $conn->query($absent_emp_sql);
+    $absent_emp_result = preparedResult($conn, $absent_emp_sql, "s" . str_repeat("i", count($branch_ids)), array_merge([$selected_date], $branch_ids));
 
     if ($absent_emp_result) {
         while ($row = $absent_emp_result->fetch_assoc()) {
@@ -246,11 +239,6 @@ if (count($top_absent_rows) > 0) {
 $month_start = $selected_month . "-01";
 $month_end = date("Y-m-t", strtotime($month_start));
 
-$trend_where = " WHERE attendance_date BETWEEN '$month_start' AND '$month_end' ";
-if ($selected_branch_id !== "") {
-    $trend_where .= " AND branch_id = '$selected_branch_id' ";
-}
-
 $trend_sql = "
     SELECT
         attendance_date,
@@ -259,12 +247,15 @@ $trend_sql = "
         SUM(CASE WHEN status_code='L' THEN 1 ELSE 0 END) AS leave_count,
         SUM(CASE WHEN status_code='H' THEN 1 ELSE 0 END) AS half_count
     FROM attendance_entries
-    $trend_where
+    WHERE attendance_date BETWEEN ? AND ?
+    " . ($selected_branch_id !== "" ? " AND branch_id = ?" : "") . "
     GROUP BY attendance_date
     ORDER BY attendance_date
 ";
 
-$trend_result = $conn->query($trend_sql);
+$trend_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $trend_sql, "ssi", [$month_start, $month_end, (int)$selected_branch_id])
+    : preparedResult($conn, $trend_sql, "ss", [$month_start, $month_end]);
 
 $trend_labels = [];
 $trend_present = [];
@@ -283,11 +274,6 @@ if ($trend_result) {
 }
 
 /* Staff vs Labour summary for selected month */
-$category_where = " WHERE a.attendance_date BETWEEN '$month_start' AND '$month_end' ";
-if ($selected_branch_id !== "") {
-    $category_where .= " AND a.branch_id = '$selected_branch_id' ";
-}
-
 $category_sql = "
     SELECT
         e.employee_category,
@@ -297,11 +283,14 @@ $category_sql = "
         SUM(CASE WHEN a.status_code='H' THEN 1 ELSE 0 END) AS half_count
     FROM attendance_entries a
     INNER JOIN employees e ON a.employee_id = e.employee_id
-    $category_where
+    WHERE a.attendance_date BETWEEN ? AND ?
+    " . ($selected_branch_id !== "" ? " AND a.branch_id = ?" : "") . "
     GROUP BY e.employee_category
 ";
 
-$category_result = $conn->query($category_sql);
+$category_result = $selected_branch_id !== ""
+    ? preparedResult($conn, $category_sql, "ssi", [$month_start, $month_end, (int)$selected_branch_id])
+    : preparedResult($conn, $category_sql, "ss", [$month_start, $month_end]);
 
 $category_labels = [];
 $category_present = [];

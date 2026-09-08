@@ -1,6 +1,7 @@
 <?php
 require_once "../includes/auth_check.php";
 require_once "../config/database.php";
+require_once "../includes/security.php";
 
 if ($_SESSION["role"] != "Admin") {
     $_SESSION["flash_error"] = "Access denied.";
@@ -15,6 +16,7 @@ $branches = $conn->query("
 ");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    requireCsrf();
     $action = $_POST["action"] ?? "add_location";
 
     if ($action === "update_toggles") {
@@ -28,16 +30,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-        $update_sql = "
-            UPDATE branch_locations
-            SET is_ot_enabled = '$is_ot_enabled',
-                is_expense_enabled = '$is_expense_enabled'
-            WHERE location_id = '$location_id'
-            LIMIT 1
-        ";
-
-        if ($conn->query($update_sql)) {
+        $update_stmt = $conn->prepare("UPDATE branch_locations SET is_ot_enabled = ?, is_expense_enabled = ? WHERE location_id = ? LIMIT 1");
+        $update_stmt->bind_param("iii", $is_ot_enabled, $is_expense_enabled, $location_id);
+        if ($update_stmt->execute()) {
             $_SESSION["flash_message"] = "Sub-location toggles updated successfully.";
+            auditEvent($conn, "location_toggles_updated", "branch_location", $location_id);
         } else {
             $_SESSION["flash_error"] = "Unable to update sub-location toggles.";
         }
@@ -57,15 +54,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-    $location_name_safe = $conn->real_escape_string($location_name);
-
-    $check_existing = $conn->query("
-        SELECT location_id
-        FROM branch_locations
-        WHERE branch_id = '$branch_id'
-        AND location_name = '$location_name_safe'
-        LIMIT 1
-    ");
+    $check_stmt = $conn->prepare("SELECT location_id FROM branch_locations WHERE branch_id = ? AND location_name = ? LIMIT 1");
+    $check_stmt->bind_param("is", $branch_id, $location_name);
+    $check_stmt->execute();
+    $check_existing = $check_stmt->get_result();
 
     if ($check_existing && $check_existing->num_rows > 0) {
         $_SESSION["flash_error"] = "Sub-Location already exists for the selected branch.";
@@ -73,15 +65,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit;
     }
 
-    $insert_sql = "
-        INSERT INTO branch_locations
-        (branch_id, location_name, is_active, is_ot_enabled, is_expense_enabled, created_at)
-        VALUES
-        ('$branch_id', '$location_name_safe', 1, '$is_ot_enabled', '$is_expense_enabled', NOW())
-    ";
-
-    if ($conn->query($insert_sql)) {
+    $insert_stmt = $conn->prepare("INSERT INTO branch_locations (branch_id, location_name, is_active, is_ot_enabled, is_expense_enabled, created_at) VALUES (?, ?, 1, ?, ?, NOW())");
+    $insert_stmt->bind_param("isii", $branch_id, $location_name, $is_ot_enabled, $is_expense_enabled);
+    if ($insert_stmt->execute()) {
         $_SESSION["flash_message"] = "Sub-Location added successfully.";
+        auditEvent($conn, "location_created", "branch_location", $insert_stmt->insert_id);
     } else {
         $_SESSION["flash_error"] = "Unable to add Sub-Location.";
     }
@@ -120,6 +108,7 @@ require_once "../includes/header.php";
         <div class="panel-title">Add New Sub-Location</div>
 
         <form method="post" class="form-grid">
+            <?php echo csrfField(); ?>
 
             <div>
                 <label for="branch_id">Branch</label>
@@ -207,6 +196,7 @@ require_once "../includes/header.php";
                                 <td><?php echo htmlspecialchars($loc["created_at"] ?? ""); ?></td>
                                 <td>
                                     <form id="<?php echo $row_form_id; ?>" method="post" style="margin:0;">
+                                        <?php echo csrfField(); ?>
                                         <input type="hidden" name="action" value="update_toggles">
                                         <input type="hidden" name="location_id" value="<?php echo (int)$loc["location_id"]; ?>">
                                         <button type="submit">Update</button>

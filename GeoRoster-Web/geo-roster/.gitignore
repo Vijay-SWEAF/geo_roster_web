@@ -1,0 +1,22 @@
+# Private deployment configuration and credentials
+config/database.local.php
+.env
+.env.*
+../georoster-config/
+
+# Logs, dumps, backups, and generated test artifacts
+error_log
+**/error_log
+*.bak
+*.backup
+*.dump
+*.sql.gz
+/tmp/
+
+# Uploaded/private files; keep the directory protection rule
+uploads/*
+!uploads/.htaccess
+
+# Local editor and runtime files
+.DS_Store
+.phpunit.result.cache
