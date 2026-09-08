@@ -570,8 +570,8 @@ function validateKycForSubmission($conn, $employeeId) {
 }
 
 function validateVerhoeff($number) {
-    $number = preg_replace('/\D/', '', (string)$number);
-    if ($number === '') {
+    $number = (string)$number;
+    if ($number === '' || !ctype_digit($number)) {
         return false;
     }
 
@@ -601,7 +601,7 @@ function validateVerhoeff($number) {
     $checksum = 0;
     $digits = array_reverse(array_map('intval', str_split($number)));
     foreach ($digits as $index => $digit) {
-        $checksum = $multiplication[$checksum][$permutation[$index % 8][$digit]];
+        $checksum = $multiplication[$checksum][$permutation[($index + 1) % 8][$digit]];
     }
     return $checksum === 0;
 }
