@@ -6,6 +6,7 @@ require_once "../includes/security.php";
 require_once "../includes/functions.php";
 require_once "../includes/kyc_document_service.php";
 require_once "../includes/kyc_bank_service.php";
+require_once "../includes/employee_benefit_service.php";
 
 $employeeId = validPositiveInt($_GET["employee_id"] ?? ($_POST["employee_id"] ?? null));
 if (!$employeeId) {
@@ -129,6 +130,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (updateKycBankAmendmentDetails($conn, $employeeId, $amendmentId, $_POST["account_number"] ?? "", $_POST["confirm_account_number"] ?? "", $_POST["ifsc_code"] ?? "", $_POST["account_type"] ?? "", $_POST["branch_name"] ?? "")) {
             $_SESSION["flash_message"] = "Amendment bank details updated successfully.";
         }
+    } elseif ($action === "save_benefit_status") {
+        if (saveGroupMedicalCoverage($conn, $employeeId, $_POST["group_medical_covered"] ?? null)) {
+            $_SESSION["flash_message"] = "Employee benefit status updated successfully.";
+        }
     } elseif ($action === "submit_amendment") {
         $amendmentId = validPositiveInt($_POST["amendment_id"] ?? null);
         if (submitKycAmendment($conn, $employeeId, $amendmentId)) {
@@ -177,6 +182,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 $kycProfile = getKycProfile($conn, $employeeId);
 $kycPrivate = getKycPrivateData($conn, $employeeId);
 $kycBank = $canSensitive ? getKycBankDetails($conn, $employeeId) : null;
+$benefitStatus = $canSensitive ? getEmployeeBenefitStatus($conn, $employeeId) : null;
 $kycStatus = $kycProfile ? $kycProfile["kyc_status"] : KYC_STATUS_NOT_STARTED;
 $documentCount = $kycProfile ? count(getKycDocuments($conn, $employeeId)) : 0;
 $kycHistory = $kycProfile ? getKycHistory($conn, (int)($kycProfile["kyc_id"] ?? 0)) : [];
@@ -914,6 +920,28 @@ $canEditAmendmentBank = $canEditAmendmentStatutory;
                 <a class="btn-secondary-link" href="documents.php?employee_id=<?php echo $employeeId; ?>">Manage KYC Documents</a>
             <?php } else { ?>
                 <p style="font-size:13px; color:#64748b;">Documents are managed by an authorized KYC Officer.</p>
+            <?php } ?>
+        </div>
+
+        <div class="panel-card" style="margin-top:16px;">
+            <div class="panel-title">Employee Benefits</div>
+            <?php if (!$canSensitive) { ?>
+                <p style="font-size:13px; color:#64748b;">Employee benefit information is restricted.</p>
+            <?php } else { ?>
+                <p>Group Medical Insurance: <strong><?php echo htmlspecialchars(groupMedicalCoverageLabel($benefitStatus['group_medical_covered'] ?? null)); ?></strong></p>
+                <form method="post" action="employee_kyc.php" style="margin-top:12px;">
+                    <?php echo csrfField(); ?>
+                    <input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>">
+                    <input type="hidden" name="action" value="save_benefit_status">
+                    <label for="group_medical_covered">Group Medical Insurance</label>
+                    <select id="group_medical_covered" name="group_medical_covered">
+                        <option value="NOT_SET" <?php echo (($benefitStatus['group_medical_covered'] ?? null) === null) ? 'selected' : ''; ?>>Not Set</option>
+                        <option value="COVERED" <?php echo isset($benefitStatus['group_medical_covered']) && (int)$benefitStatus['group_medical_covered'] === 1 ? 'selected' : ''; ?>>Covered</option>
+                        <option value="NOT_COVERED" <?php echo isset($benefitStatus['group_medical_covered']) && (int)$benefitStatus['group_medical_covered'] === 0 ? 'selected' : ''; ?>>Not Covered</option>
+                    </select>
+                    <div class="form-actions" style="margin-top:12px;"><button type="submit" class="btn-generate">Save Benefit Status</button></div>
+                </form>
+                <p style="margin-top:12px;"><a class="btn-secondary-link" href="../reports/group_medical_insurance.php">Group Medical Insurance Report</a></p>
             <?php } ?>
         </div>
 
