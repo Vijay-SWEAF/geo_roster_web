@@ -967,6 +967,10 @@ function requestKycAmendment($conn, $employeeId, $reason) {
             $insertPrivate->execute();
         }
 
+        if (function_exists('snapshotKycBankDetailsForAmendment') && !snapshotKycBankDetailsForAmendment($conn, $amendmentId, $kycId, $employeeId)) {
+            throw new RuntimeException('Unable to snapshot amendment bank details.');
+        }
+
         // Record history
         $histStmt = $conn->prepare('INSERT INTO employee_kyc_history (kyc_id, employee_id, actor_user_id, action, previous_status, new_status, remarks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
         $action = 'amendment_requested';
@@ -1320,6 +1324,13 @@ function approveKycAmendment($conn, $employeeId, $amendmentId) {
         $_SESSION['flash_error'] = 'Amendment data is incomplete or invalid.';
         return false;
     }
+    if (function_exists('getKycBankAmendmentDetails') && function_exists('validateKycBankStoredData')) {
+        $bankAmendment = getKycBankAmendmentDetails($conn, $amendmentId);
+        if (!validateKycBankStoredData($bankAmendment)) {
+            $_SESSION['flash_error'] = 'Amendment bank data is incomplete or invalid.';
+            return false;
+        }
+    }
 
     $conn->begin_transaction();
     try {
@@ -1327,6 +1338,10 @@ function approveKycAmendment($conn, $employeeId, $amendmentId) {
         $updatePrivate = $conn->prepare('UPDATE employee_kyc_private SET date_of_birth = ?, mobile_number = ?, current_address = ?, permanent_address = ?, same_as_current = ?, pan_applicable = ?, aadhaar_applicable = ?, uan_applicable = ?, esic_applicable = ?, pan_number_enc = ?, pan_hmac = ?, aadhaar_number_enc = ?, aadhaar_hmac = ?, uan_number_enc = ?, uan_hmac = ?, esic_number_enc = ?, updated_at = NOW() WHERE employee_id = ?');
         $updatePrivate->bind_param('ssssiiiiisssssssi', $amendPrivate['date_of_birth'], $amendPrivate['mobile_number'], $amendPrivate['current_address'], $amendPrivate['permanent_address'], $amendPrivate['same_as_current'], $amendPrivate['pan_applicable'], $amendPrivate['aadhaar_applicable'], $amendPrivate['uan_applicable'], $amendPrivate['esic_applicable'], $amendPrivate['pan_number_enc'], $amendPrivate['pan_hmac'], $amendPrivate['aadhaar_number_enc'], $amendPrivate['aadhaar_hmac'], $amendPrivate['uan_number_enc'], $amendPrivate['uan_hmac'], $amendPrivate['esic_number_enc'], $employeeId);
         $updatePrivate->execute();
+
+        if (function_exists('applyKycBankAmendment')) {
+            applyKycBankAmendment($conn, $employeeId, $amendmentId, $actorId);
+        }
 
         // Mark amendment APPROVED
         $newStatus = AMENDMENT_STATUS_APPROVED;
@@ -1702,3 +1717,5 @@ function getKycReviewQueue($conn, $userRole, $userBranchId) {
     }
     return $items;
 }
+
+require_once __DIR__ . '/kyc_bank_service.php';

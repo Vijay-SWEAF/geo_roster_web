@@ -5,6 +5,7 @@ require_once "../config/database.php";
 require_once "../includes/security.php";
 require_once "../includes/functions.php";
 require_once "../includes/kyc_document_service.php";
+require_once "../includes/kyc_bank_service.php";
 
 $employeeId = validPositiveInt($_GET["employee_id"] ?? ($_POST["employee_id"] ?? null));
 if (!$employeeId) {
@@ -50,12 +51,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (updateKycStatutoryData($conn, $employeeId, $panApp, $aadhaarApp, $uanApp, $esicApp, $panRaw, $aadhaarRaw, $uanRaw, $esicRaw)) {
             $_SESSION["flash_message"] = "Statutory KYC details updated successfully.";
         }
+    } elseif ($action === "save_bank") {
+        if (saveKycBankDetails($conn, $employeeId, $_POST["account_number"] ?? "", $_POST["confirm_account_number"] ?? "", $_POST["ifsc_code"] ?? "", $_POST["account_type"] ?? "", $_POST["branch_name"] ?? "")) {
+            $_SESSION["flash_message"] = "Bank details updated successfully.";
+        }
     } elseif ($action === "reveal") {
         $fieldToReveal = trim($_POST["field_name"] ?? "");
         $revealedVal = revealKycField($conn, $employeeId, $fieldToReveal);
         $_SESSION["revealed_field"] = $fieldToReveal;
         $_SESSION["revealed_value"] = $revealedVal;
         $_SESSION["flash_message"] = "Unmasked value revealed for " . strtoupper($fieldToReveal) . " (Audit Logged).";
+    } elseif ($action === "reveal_bank_account") {
+        $_SESSION["revealed_bank_account"] = revealKycBankAccount($conn, $employeeId);
+        $_SESSION["flash_message"] = "Bank account number revealed (Audit Logged).";
     } elseif ($action === "start") {
         startKycProfile($conn, $employeeId, $user["user_id"]);
         $_SESSION["flash_message"] = "KYC profile started in Draft status.";
@@ -116,6 +124,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (updateKycAmendmentStatutoryData($conn, $employeeId, $amendmentId, $panApp, $aadhaarApp, $uanApp, $esicApp, $panRaw, $aadhaarRaw, $uanRaw, $esicRaw)) {
             $_SESSION["flash_message"] = "Amendment statutory details updated successfully.";
         }
+    } elseif ($action === "save_amendment_bank") {
+        $amendmentId = validPositiveInt($_POST["amendment_id"] ?? null);
+        if (updateKycBankAmendmentDetails($conn, $employeeId, $amendmentId, $_POST["account_number"] ?? "", $_POST["confirm_account_number"] ?? "", $_POST["ifsc_code"] ?? "", $_POST["account_type"] ?? "", $_POST["branch_name"] ?? "")) {
+            $_SESSION["flash_message"] = "Amendment bank details updated successfully.";
+        }
     } elseif ($action === "submit_amendment") {
         $amendmentId = validPositiveInt($_POST["amendment_id"] ?? null);
         if (submitKycAmendment($conn, $employeeId, $amendmentId)) {
@@ -163,6 +176,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 // GET Page Rendering
 $kycProfile = getKycProfile($conn, $employeeId);
 $kycPrivate = getKycPrivateData($conn, $employeeId);
+$kycBank = $canSensitive ? getKycBankDetails($conn, $employeeId) : null;
 $kycStatus = $kycProfile ? $kycProfile["kyc_status"] : KYC_STATUS_NOT_STARTED;
 $documentCount = $kycProfile ? count(getKycDocuments($conn, $employeeId)) : 0;
 $kycHistory = $kycProfile ? getKycHistory($conn, (int)($kycProfile["kyc_id"] ?? 0)) : [];
@@ -175,6 +189,7 @@ if (!$activeAmendment && $kycProfile) {
     }
 }
 $amendmentPrivate = $activeAmendment ? getKycAmendmentPrivateData($conn, (int)$activeAmendment["amendment_id"]) : null;
+$amendmentBank = ($activeAmendment && $canSensitive) ? getKycBankAmendmentDetails($conn, (int)$activeAmendment["amendment_id"]) : null;
 $amendmentStatus = $activeAmendment ? $activeAmendment["amendment_status"] : null;
 
 if (isset($_SESSION["revealed_field"]) && isset($_SESSION["revealed_value"])) {
@@ -182,6 +197,8 @@ if (isset($_SESSION["revealed_field"]) && isset($_SESSION["revealed_value"])) {
     $revealedValue = $_SESSION["revealed_value"];
     unset($_SESSION["revealed_field"], $_SESSION["revealed_value"]);
 }
+$revealedBankAccount = $_SESSION["revealed_bank_account"] ?? null;
+unset($_SESSION["revealed_bank_account"]);
 
 $pageTitle = "Employee KYC Profile";
 $pageSubtitle = "Manage internal identity verification workflow, amendments, and structured KYC data.";
@@ -209,6 +226,7 @@ $canEditBasic = !$isVerified;
 
 $canEditAmendmentBasic = $activeAmendment && in_array($amendmentStatus, ['DRAFT', 'REQUESTED'], true);
 $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DRAFT', 'REQUESTED'], true) && ($userRole === 'Admin' || $isKycOfficer);
+$canEditAmendmentBank = $canEditAmendmentStatutory;
 ?>
 
 <div class="module-two-col">
@@ -623,6 +641,33 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
                 <?php } ?>
             </div>
 
+            <div class="panel-card" style="margin-bottom:16px;">
+                <div class="panel-title">3. Bank Details — Amendment</div>
+                <?php if (!$canSensitive) { ?>
+                    <p style="color:#64748b; font-size:13px;">Bank details are managed by an authorized KYC Officer.</p>
+                <?php } elseif ($canEditAmendmentBank) { ?>
+                    <form method="post" action="employee_kyc.php">
+                        <?php echo csrfField(); ?>
+                        <input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>">
+                        <input type="hidden" name="amendment_id" value="<?php echo (int)$activeAmendment['amendment_id']; ?>">
+                        <input type="hidden" name="action" value="save_amendment_bank">
+                        <div class="form-grid">
+                            <div><label for="amendment_account_number">New / Replacement Account Number</label><input type="text" id="amendment_account_number" name="account_number" inputmode="numeric" autocomplete="off"></div>
+                            <div><label for="amendment_confirm_account_number">Confirm Account Number</label><input type="text" id="amendment_confirm_account_number" name="confirm_account_number" inputmode="numeric" autocomplete="off"></div>
+                            <div><label for="amendment_ifsc_code">IFSC Code</label><input type="text" id="amendment_ifsc_code" name="ifsc_code" maxlength="11" style="text-transform:uppercase;" value="<?php echo htmlspecialchars($amendmentBank['ifsc_code'] ?? ''); ?>"></div>
+                            <div><label for="amendment_account_type">Account Type</label><select id="amendment_account_type" name="account_type"><option value="">Select type</option><?php foreach (KYC_BANK_ACCOUNT_TYPES as $type) { ?><option value="<?php echo $type; ?>" <?php echo (($amendmentBank['account_type'] ?? '') === $type) ? 'selected' : ''; ?>><?php echo htmlspecialchars(ucfirst(strtolower($type))); ?></option><?php } ?></select></div>
+                            <div style="grid-column:1 / -1;"><label for="amendment_branch_name">Bank Branch Name</label><input type="text" id="amendment_branch_name" name="branch_name" maxlength="150" value="<?php echo htmlspecialchars($amendmentBank['branch_name'] ?? ''); ?>"></div>
+                        </div>
+                        <div class="form-actions" style="margin-top:16px;"><button type="submit" class="btn-generate">Save Amendment Bank Details</button></div>
+                    </form>
+                <?php } else { ?>
+                    <p>Account Number: <code><?php echo !empty($amendmentBank['account_number_enc']) ? htmlspecialchars(maskBankAccountNumber(decryptKycField($amendmentBank['account_number_enc']))) : 'Not Set'; ?></code></p>
+                    <p>IFSC Code: <?php echo htmlspecialchars($amendmentBank['ifsc_code'] ?? 'Not Set'); ?></p>
+                    <p>Account Type: <?php echo htmlspecialchars($amendmentBank['account_type'] ?? 'Not Set'); ?></p>
+                    <p>Branch Name: <?php echo htmlspecialchars($amendmentBank['branch_name'] ?? 'Not Set'); ?></p>
+                <?php } ?>
+            </div>
+
         <?php } else { ?>
 
             <!-- Section 1: Basic Personal Data (Initial KYC) -->
@@ -819,6 +864,43 @@ $canEditAmendmentStatutory = $activeAmendment && in_array($amendmentStatus, ['DR
                         <?php } ?>
                     </div>
 
+                <?php } ?>
+            </div>
+
+            <!-- Section 3: Optional Bank Details -->
+            <div class="panel-card" style="margin-bottom:16px;">
+                <div class="panel-title">3. Bank Details</div>
+                <?php if (!$canSensitive) { ?>
+                    <p style="color:#64748b; font-size:13px;">Bank details are managed by an authorized KYC Officer.</p>
+                <?php } else { ?>
+                <?php if (!$isVerified) { ?>
+                    <form method="post" action="employee_kyc.php">
+                        <?php echo csrfField(); ?>
+                        <input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>">
+                        <input type="hidden" name="action" value="save_bank">
+                        <div class="form-grid">
+                            <div><label for="account_number">Account Number</label><input type="text" id="account_number" name="account_number" inputmode="numeric" autocomplete="off" placeholder="6 to 24 digits"></div>
+                            <div><label for="confirm_account_number">Confirm Account Number</label><input type="text" id="confirm_account_number" name="confirm_account_number" inputmode="numeric" autocomplete="off"></div>
+                            <div><label for="ifsc_code">IFSC Code</label><input type="text" id="ifsc_code" name="ifsc_code" maxlength="11" style="text-transform:uppercase;" value="<?php echo htmlspecialchars($kycBank['ifsc_code'] ?? ''); ?>"></div>
+                            <div><label for="account_type">Account Type</label><select id="account_type" name="account_type"><option value="">Select type</option><?php foreach (KYC_BANK_ACCOUNT_TYPES as $type) { ?><option value="<?php echo $type; ?>" <?php echo (($kycBank['account_type'] ?? '') === $type) ? 'selected' : ''; ?>><?php echo htmlspecialchars(ucfirst(strtolower($type))); ?></option><?php } ?></select></div>
+                            <div style="grid-column:1 / -1;"><label for="branch_name">Bank Branch Name</label><input type="text" id="branch_name" name="branch_name" maxlength="150" value="<?php echo htmlspecialchars($kycBank['branch_name'] ?? ''); ?>"></div>
+                        </div>
+                        <p style="font-size:12px; color:#64748b;">Bank details are optional. If started, all four fields must be completed.</p>
+                        <div class="form-actions" style="margin-top:16px;"><button type="submit" class="btn-generate">Save Bank Details</button></div>
+                    </form>
+                <?php } else { ?>
+                    <p>Account Number: <code><?php echo !empty($kycBank['account_number_enc']) ? htmlspecialchars(maskBankAccountNumber(decryptKycField($kycBank['account_number_enc']))) : 'Not Set'; ?></code></p>
+                    <p>IFSC Code: <?php echo htmlspecialchars($kycBank['ifsc_code'] ?? 'Not Set'); ?></p>
+                    <p>Account Type: <?php echo htmlspecialchars($kycBank['account_type'] ?? 'Not Set'); ?></p>
+                    <p>Branch Name: <?php echo htmlspecialchars($kycBank['branch_name'] ?? 'Not Set'); ?></p>
+                <?php } ?>
+                <?php if ($canSensitive && !empty($kycBank['account_number_enc'])) { ?>
+                    <form method="post" action="employee_kyc.php" style="margin-top:12px;">
+                        <?php echo csrfField(); ?><input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>"><input type="hidden" name="action" value="reveal_bank_account">
+                        <button type="submit" class="btn-secondary-link">Reveal Account Number</button>
+                    </form>
+                <?php } ?>
+                <?php if ($revealedBankAccount !== null) { ?><div class="flash-message flash-success" style="margin-top:12px;"><strong>Revealed Account Number:</strong> <code><?php echo htmlspecialchars($revealedBankAccount !== '' ? $revealedBankAccount : 'Not Set'); ?></code></div><?php } ?>
                 <?php } ?>
             </div>
 
