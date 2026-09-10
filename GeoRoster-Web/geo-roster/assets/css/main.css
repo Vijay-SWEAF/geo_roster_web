@@ -994,3 +994,360 @@ canvas{
         font-size:17px;
     }
 }
+
+/* ===== KYC MODULE RESPONSIVE UI ===== */
+
+.kyc-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Breadcrumb Navigation */
+.kyc-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.kyc-breadcrumb a {
+    color: #0284c7;
+    text-decoration: none;
+}
+
+.kyc-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.kyc-breadcrumb-separator {
+    color: #cbd5e1;
+}
+
+/* Compact Employee Header */
+.kyc-header {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.kyc-header-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.kyc-status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.kyc-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    font-size: 13px;
+}
+
+.kyc-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.kyc-summary-label {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.kyc-summary-value {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+/* Workflow Toolbar */
+.kyc-toolbar {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.kyc-toolbar-primary {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.kyc-toolbar button,
+.kyc-toolbar a {
+    font-size: 13px;
+    padding: 8px 12px;
+}
+
+/* Tab Navigation */
+.kyc-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.kyc-tabs button {
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.kyc-tabs button:hover {
+    color: #0f172a;
+    background: #f8fafc;
+}
+
+.kyc-tabs button.active {
+    color: #0284c7;
+    border-bottom-color: #0284c7;
+    background: #f0f9ff;
+}
+
+/* Tab Panels */
+.kyc-panel {
+    display: block;
+}
+
+html.kyc-js .kyc-panel {
+    display: none;
+}
+
+html.kyc-js .kyc-panel.active {
+    display: block;
+}
+
+/* Form Grid (2-column on desktop, 1-column on mobile) */
+.kyc-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.kyc-form-span-2 {
+    grid-column: 1 / -1;
+}
+
+/* Form Controls */
+.kyc-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.kyc-form-group label {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 13px;
+}
+
+.kyc-form-group input,
+.kyc-form-group select,
+.kyc-form-group textarea {
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+}
+
+.kyc-form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.kyc-form-group input:focus,
+.kyc-form-group select:focus,
+.kyc-form-group textarea:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+/* Form Actions */
+.kyc-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.kyc-actions button,
+.kyc-actions a {
+    font-size: 13px;
+    padding: 10px 16px;
+}
+
+/* Responsive Table */
+.kyc-responsive-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.kyc-responsive-table th {
+    background: #f8fafc;
+    font-weight: 700;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+    font-size: 13px;
+}
+
+.kyc-responsive-table td {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+}
+
+.kyc-responsive-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* Stat Cards */
+.kyc-stat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+
+.kyc-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.kyc-stat-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+/* Amendment Status */
+.kyc-amendment-box {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.kyc-amendment-box h4 {
+    color: #b45309;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+}
+
+.kyc-amendment-box p {
+    color: #78350f;
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+/* Responsive Layout Media Queries */
+@media (max-width: 1024px) {
+    .kyc-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .kyc-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .kyc-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kyc-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .kyc-tabs {
+        flex-wrap: wrap;
+    }
+
+    .kyc-tabs button {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .kyc-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .kyc-toolbar button,
+    .kyc-toolbar a {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .kyc-header {
+        padding: 12px;
+    }
+
+    .kyc-header-title {
+        font-size: 18px;
+    }
+
+    .kyc-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kyc-form-grid {
+        gap: 10px;
+    }
+
+    .kyc-tabs button {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .kyc-responsive-table th,
+    .kyc-responsive-table td {
+        padding: 8px;
+        font-size: 12px;
+    }
+}

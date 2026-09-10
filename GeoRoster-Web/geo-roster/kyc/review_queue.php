@@ -85,7 +85,25 @@ function statusBadgeClass($status) {
 }
 ?>
 
-<div class="panel-card" style="margin-bottom:18px;">
+<div class="kyc-page">
+
+    <!-- Breadcrumb Navigation -->
+    <div class="kyc-breadcrumb" style="margin-bottom:16px;">
+        <a href="../dashboard.php">Dashboard</a>
+        <span class="kyc-breadcrumb-separator">›</span>
+        <strong>KYC Review Queue</strong>
+    </div>
+
+    <div class="kyc-header" style="margin-bottom:16px;">
+        <div class="kyc-header-title">KYC Operational Review Queue</div>
+        <p style="color:#64748b; margin:8px 0 0 0; font-size:13px;">Review and process submitted KYC profiles and amendment requests.</p>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <a href="../dashboard.php" class="btn-secondary-link">← Back to Dashboard</a>
+    </div>
+
+    <div class="panel-card" style="margin-bottom:18px;">
     <div class="panel-title">Filter Review Queue</div>
 
     <form method="get" action="review_queue.php">
@@ -202,6 +220,8 @@ function statusBadgeClass($status) {
             </tbody>
         </table>
     </div>
+</div>
+
 </div>
 
 <?php require_once "../includes/footer.php"; ?>
