@@ -865,7 +865,7 @@ $statusDisplay = $kycStatus === 'VERIFIED' ? 'Internally Verified' : str_replace
             </div>
         <?php } else { ?>
             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:end; margin-bottom:16px;">
+                <div class="kyc-benefits-grid">
                     <div>
                         <p style="margin:0 0 8px 0; font-weight:600; font-size:13px;">Group Medical Insurance</p>
                         <div style="font-size:18px; font-weight:700; color:#0f172a;">
@@ -877,7 +877,8 @@ $statusDisplay = $kycStatus === 'VERIFIED' ? 'Internally Verified' : str_replace
                         <?php echo csrfField(); ?>
                         <input type="hidden" name="employee_id" value="<?php echo $employeeId; ?>">
                         <input type="hidden" name="action" value="save_benefit_status">
-                        <select name="group_medical_covered" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <label for="group-medical-covered" style="display:block; margin-bottom:6px; font-size:13px; font-weight:600;">Coverage Status</label>
+                        <select id="group-medical-covered" name="group_medical_covered" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px;">
                             <option value="NOT_SET" <?php echo (($benefitStatus['group_medical_covered'] ?? null) === null) ? 'selected' : ''; ?>>Not Set</option>
                             <option value="COVERED" <?php echo isset($benefitStatus['group_medical_covered']) && (int)$benefitStatus['group_medical_covered'] === 1 ? 'selected' : ''; ?>>Covered</option>
                             <option value="NOT_COVERED" <?php echo isset($benefitStatus['group_medical_covered']) && (int)$benefitStatus['group_medical_covered'] === 0 ? 'selected' : ''; ?>>Not Covered</option>

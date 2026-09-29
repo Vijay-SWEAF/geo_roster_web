@@ -1110,8 +1110,7 @@ canvas{
     gap: 8px;
     border-bottom: 2px solid #e2e8f0;
     margin-bottom: 16px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
 }
 
 .kyc-tabs button {
@@ -1126,6 +1125,8 @@ canvas{
     margin-bottom: -2px;
     white-space: nowrap;
     transition: all 0.2s ease;
+    min-height: 44px;
+    box-sizing: border-box;
 }
 
 .kyc-tabs button:hover {
@@ -1213,6 +1214,30 @@ html.kyc-js .kyc-panel.active {
 .kyc-actions a {
     font-size: 13px;
     padding: 10px 16px;
+}
+
+.kyc-page .btn-secondary-link,
+.kyc-page .action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.kyc-page input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.kyc-benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
 }
 
 /* Responsive Table */
@@ -1324,6 +1349,10 @@ html.kyc-js .kyc-panel.active {
 }
 
 @media (max-width: 480px) {
+    .kyc-benefits-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .kyc-header {
         padding: 12px;
     }
