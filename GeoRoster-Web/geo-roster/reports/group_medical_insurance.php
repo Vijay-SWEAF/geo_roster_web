@@ -22,6 +22,7 @@ $branches = $user['role_name'] === 'Admin' ? getBenefitReportBranches($conn) : [
 $pageTitle = 'Group Medical Insurance Coverage';
 $pageSubtitle = 'Enrollment status only.';
 $basePath = '../';
+define('APP_INCLUDED', true);
 require_once '../includes/header.php';
 ?>
 <div class="kyc-page">
